@@ -95,3 +95,46 @@ packet1 = [06, 53, 01, REG, R, G, B, FLAGS]   # first: reg selector + 4 bytes â†
 The config buffer 0x0F00+ must contain: command 0x01 + color [R,G,B,flags] so the
 command processor applies solid color. Exact field offset of command/color within
 0x0F00+ is the remaining unknown â€” needs the 0x0F00+ consumer trace.
+## Effect command grammar (2026-09-24, instruction-verified)
+
+### The 0x66 effect command processor (fw 0x66-0x2xx, inside vector area)
+Every branch builds a command block via fcn.0000a274 (ptr=0x0F22, r5=value, r7=OPCODE),
+sets [0x0F55]=1 (apply), reloads color [0x0F1D..0x0F20] with one flag bit cleared, then
+jumps to the effect-emit path (0x029c / 0x0697 / 0x0236).
+
+Observed effect opcodes (r7 to fcn.0000a274): 0x02, 0x03, 0x04, 0x08, 0x0A, 0x13, 0x15, 0x17, 0x18, 0x1B.
+Triggers: [0x0F1F] bit 0x80 -> op 0x08; bit 0x02 -> op 0x1B (clear mode); bit 0x04 -> op 0x03;
+bit 0x08 -> mode dispatch (below) then op 0x02; [0x0F41]==1 -> |= 0x80, op 0x04; [0x0F4B] -> op 0x04.
+
+Mode -> flag map (0x0F54 / 0x0F3F / 0x0F50 -> 0x0F22 bits):
+  0x0F54==0x01 -> |= 0x01 ; else -> |= 0x02
+  0x0F3F==0x11 -> |= 0x04 ; 0x0F3F==0x12 -> |= 0x08 ; 0x0F3F==0x22 -> |= 0x0C
+  0x0F54==0x35 -> |= 0x10 ; 0x0F54==0x45 -> |= 0x20 ; 0x0F54==0x55 -> |= 0x30
+  0x0F50==0x01 -> |= 0x80
+0x1155 is read with `anl #0x07` and contributes effect flags (lighting parameter register).
+
+### fcn.0000bbcd: the [0x1130]==0x5A register-block consumer
+20-byte block at 0x1130 (filled from XDATA 0x11E0 by the copy engine):
+  [0x1130] = 0x5A (magic)
+  [0x1131] = command:
+    0xAC -> [0x1132] -> 0x0F3F   (EFFECT INDEX register - host-settable)
+    0xAA -> [0x1133] -> 0x1155   (lighting parameter register)
+    else -> 0x0F3D |= 0x20
+A report-0x09 frame landing `5A AC <effect>` at the command block sets the effect index.
+
+### Copy engine (fcn.0000b893 / fcn.0000b8b4 / fcn.0000d093)
+fcn.0000b893: count=r7 -> [0x0F7E], dest ptr = 0x11C1, arm copy.
+fcn.0000b8b4: source = XDATA 0x11E0 (staged command register), [0x0F73]=r7.
+fcn.0000d093: 16-bit counter decrement per byte; reads via fcn.0000295c (space 1 = XDATA),
+writes via fcn.0000289d to dest.
+fcn.0000b800: dest = 0x11C0 + (REG+5) where REG = 0x0EFF from 'S' staging.
+
+### fcn.0000a6de: sub-dispatcher (PARTIALLY DECODED)
+Stores r7:r5 to [dptr..+2]; byte dispatch on {0x07, 0x05, 0x08, 0x0B, 0x13} -> paths
+0xa70f (->0xb986), 0xa71a (->0xb20b), 0xa729 (->0x9f7e), 0xa738 (->0x8690),
+0xa744 (->fcn.00009260 = 0x1130 feeder). Called from 0x5853. TODO: entry byte source.
+
+### Analysis-base integrity check
+disasm_v2.txt verified byte-consistent with fw/k75_full.bin at the vector region
+(0x43 = `ljmp 0x6280` in both). Earlier "0x43 mismatch" was a misreading; the
+trusted disasm base is sound.
