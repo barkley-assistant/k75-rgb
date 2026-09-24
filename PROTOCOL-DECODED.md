@@ -176,3 +176,30 @@ fcn.000096ce copies from [0x0F75:0x0F76] (XDATA 0x11E0 in one path) -> 0x1130;
 called from fcn.00009260 (effect 0x13) and 0xa778. The per-key builder at
 fcn.000057db computes a table address = 0x0575 + index * [0x0C4F].
 Next: decode fcn.00001b46 (frame processor) to pin the frame byte -> 0x1130 mapping.
+
+## Flash read command (cmd 0x04) internals (2026-09-24)
+
+fcn.00008402 (cmd 0x04 handler):
+- Writes opcode 0x52 to [0x0F5B], arms with 0x5A, polls until cleared.
+- frame[9]==0x01 -> firmware writes 0x13 into the frame at offset 10
+  (response marker; visible in the GET-0x09 echo).
+- 128-iteration loop (counter 0..127):
+    * r6:r7 = counter stored to [0x0EF3:0x0EF4] (flash address pair)
+    * r5 = frame[counter+8] (loaded but NOT used by fcn.0000da34)
+    * r3 = 0x52 (flash READ op)
+    * fcn.0000da34: arms [0x0FAE]=5, [0x0FAF]=0x0A (async flash-op flags);
+      when the address LOW byte == 1, also calls fcn.0000b9c0 immediately.
+    * [0x0F5B] cleared, [0x0BC2]/[0x0BC7] cleared, [0x0BC8]=0xAA at exit.
+
+fcn.0000b9c0 (flash op init): reads address pair, sets op r7 = 0x6E, clears
+the pair. 0x6E is in the fcn.0000b35e valid-op set
+{0x52,0x5E,0x5F,0x62,0x63,0x66,0x67,0x6A,0x6B,0x54,0x56,0x6E..0x75}.
+
+Async model: the flash op executes via the polled [0x0FAE]=5/[0x0FAF]=0x0A
+arm flags, not synchronously. The executor is fcn.0000d8e8 (op dispatch,
+calls fcn.0000b355 to store the address and fcn.0000b9c0 to fire).
+TODO: decode fcn.0000d8e8 fully to pin where read results land.
+
+Empirical safety note: a zero-filled cmd-0x04 frame runs this entire loop
+harmlessly (probe readcfg, keyboard healthy after). frame[9]=1 only adds the
+0x13 response marker.
