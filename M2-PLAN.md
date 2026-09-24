@@ -568,3 +568,12 @@ remains sinowisp ISP re-flash (backups verified).
 2. Locate the mode byte by diffing config dumps taken in two known modes (factory
    rainbow vs solid-color after Fn+Esc → Fn+| cycle).
 3. Only then write mode/brightness/speed fields — never a full template blind.
+
+---
+
+# M6.6 — direct-LED negative (2026-09-24)
+
+cmd 0x08 with the RK M75/Kreo header (`09 08 00 00 01 00 <len LE> <RGB...>`,
+81 keys) ACKs but does NOT change lighting on the K75. The K75's fcn.00007108
+expects a different frame layout. Color control stays on the verified
+cmd 0x0a + 0x0b path.
