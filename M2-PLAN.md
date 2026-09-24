@@ -577,3 +577,42 @@ cmd 0x08 with the RK M75/Kreo header (`09 08 00 00 01 00 <len LE> <RGB...>`,
 81 keys) ACKs but does NOT change lighting on the K75. The K75's fcn.00007108
 expects a different frame layout. Color control stays on the verified
 cmd 0x0a + 0x0b path.
+
+## M7 — Decisive architecture conclusion (2026-09-24, solo session)
+
+Subagent decode of fcn.00001b46 + fcn.000057db (committed with corrections
+in analysis/fn1b46-decode.md) + parent verification settles the M2 question:
+
+### 1. There is NO live-frame path to mode/brightness/effect
+- 0x0F3F (effect index): all writers are constants (e.g. 0x12 at 0x2114) or
+  config-load; NOT reachable from the report-0x09 frame.
+- 0x0F54 (mode): all writers are Fn-key constants (0x35/0x45/0x55/0x01/0x02)
+  or copies from the saved-mode mirror 0x0B9F.
+- 0x0F64 (brightness): all five writers firmware-internal (default 0x3C).
+- [0x0EE7]:[0x0EE8] = physical key row:col from the matrix scan — NOT a
+  host-controlled pointer. (Corrects the earlier "host pointer" theory.)
+
+### 2. The host route to effects/brightness = config-region write + reload
+- cmd 0x0a = config flash write (op 0x54, fcn.00009308); cmd 0x06 = save
+  (op 0x56); the config region = ~50 bytes data-flash (0x00-0x32) + 126-byte
+  per-key grid.
+- Empirically proven: a config write through this path DOES change the
+  lighting state (the modeprobe wedge; Fn+Esc recovers).
+- So M2 = write the K75-format config image with the desired mode/brightness/
+  speed/effect bytes, then apply/save.
+
+### 3. Remaining unknown: the K75 config byte layout
+Known anchors: default profile at CODE 0xA418 (72 bytes; mode 0x35 at
++0x0E = 0xA426); save template CODE 0xAD7A -> XDATA 0x0DB2 (0xFF slots at
+0, 9, 14, 15, 21); effect tables 0xDB76 (index->code), 0xA40A (mode->code);
+recipe tables 0xC000-0xC3xx; 0x0BD4 recipe records (4-byte, indexed by
+[0x0F50]+[0xE0]+slot*4).
+
+### 4. Next steps
+a. Read-side config dump (preferred, safe): pin the cmd-0x04 read response
+   path (data-flash -> XDATA 0x08xx via the [0x08F1:0x08F2] engine, then the
+   GET echo) so the live config can be dumped and diffed across two states.
+b. If the read path stays blocked: with the user present, write a config with
+   ONE byte changed at a time through cmd 0x0a, observe the lighting delta,
+   binary-search the offsets (Fn+Esc as the safety net).
+c. Then implement mode/brightness/speed in the driver.
