@@ -265,3 +265,21 @@ zeroed the per-key table -> all LEDs off. Fn+Esc factory reset restored.
 K75 config layout differs from F11: mode/brightness/speed offsets are in the
 50-byte region at the K75's own offsets (default profile: CODE 0xA418, mode
 0x35 at +0x0E; save template CODE 0xAD7A -> XDATA 0x0DB2).
+
+## Report-0x09 frame buffer (2026-09-24)
+
+The 519-byte report-0x09 payload lives at XDATA 0x1150+:
+- [0x1150] = frame[0] = COMMAND byte (fcn.00008765 dispatch: 0x04 read,
+  0x06 save, 0x09 ISP [checks frame[3]==0x05 && frame[4]==0x75 -> fcn.0000ecc4]).
+- [0x1155] = frame[5] — read by the 0x66 effect processor with `anl #0x07`
+  (effect flags contribution) and used as a response byte by fcn.0000bbcd
+  (cmd 0xAA writes [0x1133] -> 0x1155, i.e. writes into frame[5]).
+- 0x1130 (the 20-byte command block) is BELOW the frame buffer — a separate
+  workspace filled by the copy engine, consumed by fcn.0000b684 when
+  [0x0F7F]==1: [0x1130]==0x5A -> fcn.0000bbcd register block
+  ([0x1131] 0xAC -> [0x1132] -> 0x0F3F effect index; 0xAA -> [0x1133] -> 0x1155);
+  [0x1130]==0x13 -> fcn.0000d2f6 apply gate (fcn.0000218b).
+
+Polymorphic helpers: fcn.0000289d reads one byte — r3==1: XDATA [dptr];
+r3==0xFE: IRAM @r1; else: CODE [dptr]. fcn.0000295c advances the pointer at
+[dptr]. fcn.00002972 = effect-engine gate (r3:r2:r1 vs r7:r6:r5 compare).
