@@ -203,3 +203,22 @@ TODO: decode fcn.0000d8e8 fully to pin where read results land.
 Empirical safety note: a zero-filled cmd-0x04 frame runs this entire loop
 harmlessly (probe readcfg, keyboard healthy after). frame[9]=1 only adds the
 0x13 response marker.
+
+## Frame-pointer chain correction (2026-09-24)
+
+[0x0EE7:0x0EE8] = the FRAME POINTER pair (host-influenced):
+- fcn.0000a6de (effect dispatcher) stores r7:r5 -> [0x0EE7:0x0EE8] at entry.
+- r7:r5 come from call site 0x5853 in fcn.000057db, which walks a per-key
+  table at XDATA 0x0575 + index*[0x0C4F] and loads two bytes from the frame.
+- The apply gate fcn.0000218b reads the table at [0x0EE7:0x0EE8] on every
+  call (the other agent's M5 was right about this pointer being
+  host-controlled; wrong that payload[0..2] sets it directly).
+
+So the host CAN aim the apply gate at its own staged bytes IF the frame
+positions the pointer correctly. The mapping frame-bytes -> table address is
+in fcn.000057db (0x5822: r7 = [dptr]; r6 = [0x0C4F]; a = r7 * r6 + 0x75,
+high = 0x05 + carry, then add a,0x1e [R6 reg]).
+
+fcn.0000d8e8 (flash op dispatch): calls fcn.0000b35e (valid-op set check);
+if r7 == 1 -> op 0xE6, clear address pair. The real executor runs from the
+polled [0x0FAE]/[0x0FAF] arm flags.
