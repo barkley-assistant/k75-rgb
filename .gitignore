@@ -1,0 +1,12 @@
+# Build artifacts
+/target/
+**/target/
+
+# Rust
+Cargo.lock
+**/*.rs.bk
+
+# Editor/OS
+.DS_Store
+*.swp
+*~
