@@ -222,3 +222,25 @@ high = 0x05 + carry, then add a,0x1e [R6 reg]).
 fcn.0000d8e8 (flash op dispatch): calls fcn.0000b35e (valid-op set check);
 if r7 == 1 -> op 0xE6, clear address pair. The real executor runs from the
 polled [0x0FAE]/[0x0FAF] arm flags.
+
+## Data-flash engine (2026-09-24)
+
+Flash op flow: op staged at 0x0F80, arm at 0x0F5B (0x5A -> fire). Main-loop
+dispatcher at 0x62d7 polls [0x0F5B]==0x5A -> fcn.0000d8e8 -> fcn.0000b35e
+(op validator+executor). Op staging sites: cmd 0x04 -> 0x52 (READ) at 0x840d;
+cmd 0x0a -> 0x54 (WRITE) at 0x9313; also 0x5E (0x94fa), 0x6A (0x959a),
+0x62 (0x99e9), 0x66 (0x9a83).
+
+fcn.0000b35e valid-op set: 0x52, 0x5E, 0x5F, 0x62, 0x63, 0x66, 0x67, 0x6A,
+0x6B, 0x54, 0x56, 0x6E..0x75. Each valid op enters the 0xb38a execution block
+at a per-op offset. The block checks XDATA [0x08F2] vs 0xF4 and [0x08F1] vs
+0x01, then loops a 16-bit counter at 0x0EDB:0x0EDC (limit 6).
+
+Data-flash transfers run against the XDATA 0x08xx region (the live per-key
+color table area): 0x08F1/0x08F2 = the table pointer/limit. This is the
+bridge between the ISP data-flash (config region, ~50 bytes addressed
+0x0000-0x0032 via [0x0F5E:0x0F5F]) and the live per-key table.
+
+Config flash address pair [0x0F5E:0x0F5F]: [0x0F5F] reset to 0 (0x1edf),
+[0x0F5E] a running counter capped at 0x32=50 (0x6366). Config = 50-byte
+data-flash region.
