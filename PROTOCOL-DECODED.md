@@ -244,3 +244,24 @@ bridge between the ISP data-flash (config region, ~50 bytes addressed
 Config flash address pair [0x0F5E:0x0F5F]: [0x0F5F] reset to 0 (0x1edf),
 [0x0F5E] a running counter capped at 0x32=50 (0x6366). Config = 50-byte
 data-flash region.
+
+## Per-key table geometry (2026-09-24)
+
+- [0x08F1:0x08F2] = 16-bit pointer into the live per-key table region
+  (XDATA 0x01xx..0x01F4, bound check 0x01F4). Init at 0x66b5: pointer = 0x01F4.
+- fcn.000084e2: address = 0x05F4 + col*36 (B=0x24) with 6-row inner loop;
+  second base 0x05F6. Grid = 21 columns x 6 rows = 126 cells.
+- fcn.0000b35e executor: 21 outer (limit 0x15) x 6 inner (limit 0x06) = 126-byte
+  data-flash transfer per op, one byte per cell via fcn.000084e2.
+- 126 bytes is NOT 81x3=243: the saved per-key config is a reduced/compressed
+  form of the full 81-key table. (81-key live table = the working color path.)
+
+## Why the F11-template probe wedged the lighting (root cause)
+
+cmd 0x0a writes the 50-byte data-flash config region (0x00-0x32) from the
+frame, plus the 126-byte per-key region. The OpenRGB F11 template (141 bytes)
+overflowed the 50-byte config with F11-layout fields (mode at the F11 offset),
+zeroed the per-key table -> all LEDs off. Fn+Esc factory reset restored.
+K75 config layout differs from F11: mode/brightness/speed offsets are in the
+50-byte region at the K75's own offsets (default profile: CODE 0xA418, mode
+0x35 at +0x0E; save template CODE 0xAD7A -> XDATA 0x0DB2).
