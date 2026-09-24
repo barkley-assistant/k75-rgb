@@ -283,3 +283,14 @@ The 519-byte report-0x09 payload lives at XDATA 0x1150+:
 Polymorphic helpers: fcn.0000289d reads one byte — r3==1: XDATA [dptr];
 r3==0xFE: IRAM @r1; else: CODE [dptr]. fcn.0000295c advances the pointer at
 [dptr]. fcn.00002972 = effect-engine gate (r3:r2:r1 vs r7:r6:r5 compare).
+
+## Frame-pointer convention (2026-09-24)
+
+Every flash-op handler (fcn.00008402 read, fcn.00009308 write, fcn.00007393
+serialize, 0x8fb9/0x94ef/0x958f/0x99de/0x9a78) begins with the same idiom:
+  [0x0EEE] = r6, [0x0EEF] = r7, [0x0EF0] = r5   (frame pointer pair + offset)
+so the command dispatcher passes the FRAME LOCATION in r6:r7 and an offset in
+r5. The earlier "frame = 8:0xFA" was the value from one call path only.
+
+cmd 0x04/0x06 share path 0x8834 -> fcn.0000ecb8 (ISP-adjacent handler).
+fcn.00008838: bounds check then CODE table 0x0786 + index walk.
