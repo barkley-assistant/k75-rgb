@@ -309,3 +309,17 @@ Also confirmed: cmd 0x0a routes to fcn.00005001 at 0x87bf (shared with the
 report-0x06 'S'/'R' protocol); with an RGB-filled payload the 'S'/'R' branches
 no-op, so the color effect comes from the cmd-0x0b apply reading the staged
 payload, not from fcn.00005001.
+
+## Direct-LED command (cmd 0x08) — decoded (2026-09-24)
+
+fcn.00007108 (instruction-verified):
+- entry: r6:r7 = frame pointer, r5 = payload offset where RGB data starts
+- loop 6 iterations: reads 3 bytes at frame[r5 + i*3] and writes them to
+  XDATA 0x0379 + i*3 (targets 0x0379/0x037A/0x037B... = 18 bytes total)
+- consumer: effect engine at 0x2dd6 reads the 0x0379 zone with stride 0x12
+  (fcn.00002a0a), status flag byte at 0x0375 ([0x0375] & 7 at 0x311a)
+
+So cmd 0x08 = direct-LED write for a 6-key RGB zone (18 bytes), NOT the
+81-key grid. The RK M75/Kreo family header (09 08 00 00 01 00 <len> <RGB...>)
+is misaligned for the K75 — that's why the family-format test failed. This
+6-key zone is a strong candidate for the side/case underglow strip.
