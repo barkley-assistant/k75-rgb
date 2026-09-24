@@ -1,6 +1,6 @@
 //! Host-driven effect/brightness driver for the RedThunder K75.
 //!
-//! All packet fields here are derived from the disassembly (see M2-PLAN.md,
+//! All packet fields here are derived from the disassembly (see docs/architecture.md,
 //! "M3 findings" and "M4"). Nothing is guessed:
 //!
 //!  - `fcn.0000baa2` (0xbaa2) builds the effect command block:

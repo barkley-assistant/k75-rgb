@@ -5,7 +5,7 @@
 //! Writes the file contents into the report-0x09 payload via cmd 0x0a
 //! (config write, op 0x54) + cmd 0x0b (apply). The image lands in the
 //! config region that drives the lighting state (see
-//! analysis/config-layout-hypothesis.md). WARNING: malformed images can
+//! docs/config-region.md). WARNING: malformed images can
 //! wedge the lighting engine; Fn+Esc (hold ~3s) recovers. Do NOT send
 //! cmd 0x06 (save) until the image is verified visually.
 use hidra::{Hidra, MaybeFuture, Nusb};

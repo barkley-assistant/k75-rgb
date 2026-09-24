@@ -1,7 +1,7 @@
 //! Repeat-and-hold lighting tests for the RedThunder K75.
 //!
 //! Every packet here traces to a decoded instruction in analysis/disasm_v2.txt.
-//! See M2-PLAN.md "M4" for the derivation of each.
+//! See docs/architecture.md for the derivation of each.
 //!
 //! Each test loops indefinitely so the keyboard can be watched while it runs,
 //! and prints a prompt line between iterations.
@@ -134,7 +134,7 @@ async fn main() {
         }
 
         // ---------------------------------------------------------------
-        // stageapply: stage then apply, per M2-PLAN.md M4.
+        // stageapply: stage then apply, per docs/architecture.md.
         //   stage: report 0x09 cmd 0x13, r5=2 (call site 0x02e2)
         //   then the 19-byte config table with its checksum.
         // ---------------------------------------------------------------

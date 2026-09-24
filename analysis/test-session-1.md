@@ -7,8 +7,10 @@ Baseline: Fn+Esc factory reset (rainbow).
 |---|-------|-------|--------|
 | 0 | config-default-72.bin | none (control) | PASS — no change, no wedge |
 | 1 | config-mode45-72.bin | +0x0E: 0x35→0x45 | **CHANGED — multi-color WAVE** |
-| 2 | mode45-speed20 (old) | +0x16: 0x04→0x20 | no visible change (INVALID offset — see below) |
-| 3 | mode45-speed20 (new) | +0x1A: 0x63→0x20 | no visible speed change |
+| 2 | mode45-speed20-72.bin | +0x16: 0x04→0x20 | no visible change (see correction below — wrong offset was being tested) |
+
+Note: the corrected +0x1A speed images (mode45-speed05.bin / mode45-speed20.bin)
+were built but NOT yet sent live — they're the first tests of Session 2.
 
 ## Confirmed
 - **+0x0E = mode byte** (VERIFIED live): 0x35 = static rainbow, 0x45 = wave.
