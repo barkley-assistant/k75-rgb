@@ -138,3 +138,41 @@ Stores r7:r5 to [dptr..+2]; byte dispatch on {0x07, 0x05, 0x08, 0x0B, 0x13} -> p
 disasm_v2.txt verified byte-consistent with fw/k75_full.bin at the vector region
 (0x43 = `ljmp 0x6280` in both). Earlier "0x43 mismatch" was a misreading; the
 trusted disasm base is sound.
+
+## Effect architecture (complete, 2026-09-24)
+
+### Effect index -> code -> handler chain
+1. Effect index register 0x0F3F.
+   Host-settable via the 0x1130 register block: [0x5A, 0xAC, <index>] -> fcn.0000bbcd
+   stores [0x1132] into 0x0F3F.
+2. 0x0F3F -> CODE table 0xDB76 (16 entries):
+     01 02 03 04 05 07 08 09 0a 0b 0c 0d 0f 10 11 13
+   -> effect command register 0x0F83.
+3. 0x0F83 -> fcn.0000a6de dispatcher (entry stores r7:r5 -> [0x0EE7:0x0EE8]):
+     0x07 -> 0xb986   0x05 -> 0xb20b   0x08 -> 0x9f7e   0x0b -> 0x8690
+     0x13 -> fcn.00009260 (the 0x1130 command-block feeder; per-key color path)
+     else -> ret.  Gated on [0x0BA6] == 0.
+4. fcn.00009260: writes r6:r7:r4:r5 -> [dptr], gated on config [0x0C4D] == 0xFF
+   or [0x0C4E] == 0x01, reads [0x0C4F], [0x0C51] -> r7:r5, calls fcn.0000976c.
+
+### Effect tables
+- 0xDB76 (16 bytes): effect index -> command code (above).
+- 0xA40A (24 bytes): mode -> effect-code table used by Fn+| cycle
+  (01 20 01 06 03 04 04 00 00 00 00 00 00 99 02 ...).
+- 0xC000/0xC100/0xC200/0xC300: 4-byte effect param records (two profiles;
+  0xC228 differs: 64 00 08 vs 64 00 04).
+
+### Mode / brightness registers (live XDATA)
+- 0x0F54 mode command byte; 0x0F22 mode flags (see map in previous section).
+- 0x0F64 brightness (default 0x3C = 60). All five writers firmware-internal.
+- 0x0F3D lighting flags; 0x0F3E staged-apply flags.
+- 0x1155 lighting parameter register (read with anl #0x07).
+- 0x0BA6 gate, 0x0C4D-0x0C51 live config bytes (0x0C4D gate for the
+  command-block feeder; 0x0C4F = stride multiplier for per-key builder).
+
+### Remaining unknown for M2
+The report-0x09 frame offsets that fill the 0x1130 command block. Known:
+fcn.000096ce copies from [0x0F75:0x0F76] (XDATA 0x11E0 in one path) -> 0x1130;
+called from fcn.00009260 (effect 0x13) and 0xa778. The per-key builder at
+fcn.000057db computes a table address = 0x0575 + index * [0x0C4F].
+Next: decode fcn.00001b46 (frame processor) to pin the frame byte -> 0x1130 mapping.
