@@ -262,3 +262,113 @@ always the single byte at `0x0F22`.
 3. Confirm whether `0x0F64` brightness is settable at all, or a pure Fn-key-only
    control. Current evidence says **Fn-key only**.
 4. Side/case light zone (SETUP handler `fcn.0000131c`).
+
+---
+
+# M4 — why the earlier tests failed, and the actual host path (DECODED)
+
+## The `'S'` write only *stages*. It never applies.
+
+`fcn.00005001` (the report-0x06 `'S'` handler) ends at `0x5066`:
+
+```
+0x5055  mov r1, 0x07        ; dest = 0x0F07
+0x505b  mov r4, #0x0f
+0x505d  mov r5, #0x01
+0x5061  mov r7, #0x04
+0x5063  lcall fcn.00002877  ; polymorphic copy 4 bytes -> 0x0F07
+0x5066  mov dptr, #0x0eb5
+0x5069  mov a, #0x04        ; state = 4 (STAGED)
+0x506b  movx @dptr, a
+0x506c  ret
+```
+
+It copies the 4 data bytes into `0x0F07` and sets state `0x0EB5 = 4`. That is the
+whole function. **No command block is built, nothing is armed, nothing is applied.**
+The 1031 bytes are correctly sized but the payload is only 4 bytes and it lands in a
+scratch buffer. This is why the effect blocks ACK'd and nothing happened: they were
+written into `0x0F07` and dropped.
+
+## The real host path runs through report 0x09 and `0x0EE7`
+
+`fcn.0000249b` (the host command dispatcher, 0x249b..0x25a0+) reads a **pointer pair**
+at `0x0EE7:0x0EE8` — not a scalar command byte — and walks a table:
+
+```
+0x2255  mov dptr,#0x0ee7 ; r4 = [0x0EE7]   (ptr low)
+0x225a  inc dptr         ; r7 = [0x0EE8]   (ptr high)
+0x225c  add a,r7         ; dptr = r6:r7 + offset
+0x2263  movx a,@dptr     ; read the entry
+0x2265  mov dptr,#0x0b0d  ; staging buffer
+0x2276  movx @dptr,a     ; store into the 19-byte table at 0x0B0C..0x0B0E
+0x227b  inc dptr          ; advance
+0x2285  mov dptr,#0x0ee9
+0x2288  inc a             ; 0x0EE9 = entry counter++
+0x228b  sjmp 0x2240       ; loop
+```
+
+The **apply trigger** is at `0x238e`, reached when the host sends command `0x13`
+(the value written into `0x0EFF` by the `'S'` handler, and emitted as command byte
+`0x13` at call site `0x02e2`):
+
+```
+0x238e  mov dptr,#0x0ee7
+0x2396  mov r5, #0x13      ; 19 bytes
+0x2398  lcall fcn.0000dad1 ; checksum the 19-byte table
+0x239b  mov dptr,#0x0ee7
+0x23a3  add a, #0x13       ; dptr += 19
+0x23ab  movx a,@dptr
+0x23ac  xrl a, r7          ; compare against computed checksum
+0x23ad  jz  0x23b2         ; match -> APPLY
+0x23af  ljmp 0x2490        ; mismatch -> abort
+
+0x23b2  mov 0x82, r5 ; mov 0x83, r4 ; inc dptr x3
+0x23b9  movx a,@dptr
+0x23ba  jnz 0x23d3         ; if the arm byte is set -> 0x23d3 (real apply)
+0x23bc  lcall fcn.0000da85 ; otherwise: reset staging
+```
+
+At `0x23d3` the arm byte at `[ptr+19]` is checked, then `[ptr+4] & 0x0F` goes to
+`0x0EEA` and `[ptr+4] & 0xF0` to `0x0EEB` — the two nibbles of the mode/param byte,
+validated against `0x08F4`.
+
+**So the sequence is:** stage a 19-byte table, then send the apply command (`0x13`),
+which checksums it and, on a match plus a set arm byte, splits it into the live
+registers. A single `'S'` frame can never do this — the stage and the apply are two
+different commands.
+
+## The gate: `0x0EFF` selects which engine runs
+
+`fcn.0000b7d2` (register engine) is called at `0x7540` **with `r7 = 0xBB`** and
+`0x0EFF` already holding REG:
+
+```
+0x753e  mov r7, #0xbb
+0x7540  lcall fcn.0000b7d2
+0x7543  ljmp 0x75fe
+```
+
+`0x7540` is behind a gate on `0x0EE7`'s tail bits:
+
+```
+0x7520  mov dptr,#0x0ee7 ; jnb 0xe0.4, 0x7546   ; bit 4 -> register engine
+0x7546  mov dptr,#0x0ee7 ; jb  0xe0.6, 0x7550   ; bit 6 -> 0x75d7/Fn-key path
+```
+
+The sibling branches write `r7 = 0xC2` (reads `0x0F44`) and `r7 = 0xC3`
+(reads `0x0F41`) — both `fcn.0000d9a4`. **The register engine is the e0.4 branch.**
+
+## Conclusion
+
+Brightness (`0x0F64`) is still unreachable — that part of the earlier analysis holds,
+there are exactly 5 writers and all are firmware-internal. But **live mode/effect is
+reachable**, via the stage-then-apply pair on report 0x09, not via the report-0x06
+`'S'` write. The `fx` tool was built against the wrong path.
+
+## REMAINING (M5)
+
+1. Build the stage+apply pair: stage a 19-byte table at `0x11C1..0x11D3`, then send
+   the apply command with the correct checksum. Expect command byte `0x13` on
+   report 0x09 (the value call site `0x02e2` emits, `r5=2`, not the 19-byte
+   config one — so verify which r5 the apply path actually consumes).
+2. Verify the arm byte position (`[ptr+19]`) and the `0x0F54` nibble split.
