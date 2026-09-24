@@ -145,12 +145,120 @@ How does a HOST command reach `0x0F54` (live mode)? Established:
   to live lighting in empirical tests (needs the full command-message + apply gate).
 - `0x0F54` is set internally (Fn-key / profile load / mode engine `fcn.0000100e`).
 
-Most likely remaining path: the mode/brightness/speed are part of the **flash profile**
-written via report 0x09 flash-op `0x54` (config write), OR the `'S'` register protocol
-requires the exact command-message sequence that arms `0x11E0` + apply gate.
+---
 
-REMAINING:
-1. Exact `'S'` command-message byte sequence that arms `0x11E0` and applies mode.
-2. Brightness/speed write path (0x0F64/0x0F65).
-3. How 0x0F54 selects effect vs solid (full effect list).
-4. Side/case light (separate zone — SETUP handler fcn.0000131c).
+# M3 findings — command-alphabet + live-effect emit path
+
+All of the below is instruction-verified in `analysis/disasm_v2.txt`.
+
+## 1. `fcn.0000a274` — the universal command-block builder
+
+Every lighting emit goes through this one helper. Register convention (recovered from
+all 11 call sites):
+
+| reg | role |
+|-----|------|
+| r3:r2:r1 | 3-byte CODE/X pointer to the payload source (stored as a pointer at `0x0EE7..0x0EE9`) |
+| r5 | payload length in bytes (copied from `[ptr+5]`) |
+| r7 | **command byte** |
+
+It writes `0x11C1 = 0x50` (magic), `0x11C2 = r7` (command), then `fcn.000028b6`
+polymorphic-copies r5 bytes into `0x11C4+`. Note the **0x50 magic here vs 0x5A** in
+the `'S'`/apply blocks — two distinct command families share the `0x11C1` staging area.
+
+Returns through `fcn.0000d08b` → `fcn.0000289d` → `0x0AA` (apply latch).
+
+## 2. Command alphabet (complete — from the 11 call sites)
+
+| call site | cmd (r7) | len (r5) | payload ptr |
+|-----------|----------|----------|-------------|
+| 0x009b | **0x0a** | 14 | 0x0F22 — per-key RGB (this is the working protocol) |
+| 0x00e1 | 0x1b | 1 | 0x0F22 |
+| 0x0121 | 0x08 | 1 | 0x0F22 |
+| 0x01e1 | 0x02 | 1 | 0x0F22 |
+| 0x021d | 0x03 | 1 | 0x0F22 |
+| 0x0284 | 0x04 | 4 | 0x0F22 |
+| 0x02e2 | 0x13 | 1 | 0x0F22 |
+| 0x034b | 0x15 | 2 | 0x0F22 |
+| 0x0434 | 0x17 | 1 | 0x0F22 |
+| 0x05dc | 0x15 | 2 | 0x0F22 |
+| 0x067d | 0x18 | 1 | 0x0F22 |
+
+Every one of them reads payload from `0x0F22` (the command/latch byte) — so `0x0F22`
+is the **shared TX latch**, not a mode flag as previously logged.
+
+## 3. The Fn-key → live-effect emit path (the M3 key)
+
+`0x756a..0x75c9` reads key-matrix state from `0x0F93` (bits 0/2/6) and `0x0F97`, then
+sets `r7 ∈ {0x10, 0x12, 0x16}` — **effect op codes** — plus flag regs r5/r3, and calls
+`fcn.0000baa2` at 0x75c9.
+
+`fcn.0000baa2` builds a second command block (magic 0x5A this time):
+
+```
+0x11C1 = 0x5A   magic
+0x11C2 = 0xF0   command type (effect/set)
+0x11C3 = 0x07   sub-type
+0x11C4 = r7     effect op (0x10 / 0x12 / 0x16)
+0x11C5 = 0x01   if r5 != 0
+0x11C6 = 0x01   if r3 != 0
+0x11C7 = checksum (fcn.0000d210, r7=6)
+```
+
+then `fcn.0000b893` (arm: sets `0x0F7A=1`, `0x0F7B=0x11`, `0x0F75=1`, `0x0F76=0x11`,
+`0x0F77=0xE0`, `0x0F78/9=0`, `0x0F73=r7`) → `fcn.0000d093` → decrements the 16-bit
+counter and calls `fcn.0000289d` → `0x0AA`.
+
+**`fcn.0000ba6b`** (second caller at `0xd054`, first at 0x75fb) is the same builder with
+r5=6 and `0x11C2 = r7` taken from the caller. Both are the live-apply path.
+
+## 4. `0x0F83` is the EFFECT INDEX, not brightness
+
+`0x3670 / 0x36a0 / 0x36d4` increment `0x0F83` and skip `0x06`, `0x0e`, `0x12`, wrapping
+above `0x13`. At `0x3c13` it is used as an index: `0xA800 + 0x15 * 0x0F83` (stride 21),
+reading 3 channel bytes at `+0/+1/+2` via `fcn.00002a0a`. Reset to 1 (via `movc` from
+`0xA40A` → 0x01) when the `0x0F59` timer expires.
+
+Effect parameter table = CODE `0xA800`, stride `0x15`, 21 bytes per effect.
+
+## 5. `0x0F64` (brightness) — CONFIRMED no host writer
+
+Complete list of `mov dptr,#0x0f64` sites in the firmware (5 total, exhaustively grepped):
+
+| addr | context |
+|------|---------|
+| 0x041e | solid-mode entry: `mov a,#0x3c` — default 60 |
+| 0x10b6 | fade-out terminator: conditional store of `0x01` to `0x0C51` when 0x0F64 == 0 |
+| 0x3597 | fade loop: `dec a` until zero |
+| 0x828c / 0x82d2 | mode-off: `clr a` → 0 |
+
+
+`grep -c '900f64'` over the full disassembly returns exactly **5** matches (the table
+above). Not one of them is reachable from a host command path — every writer is
+firmware-internal (mode entry, fade loop, mode-off). This is the definitive negative
+result for the `'S'` register-sweep hypothesis: sweeping `'S'` REG values cannot
+change brightness by construction.
+
+## Conclusion for the task as handed off
+
+The handoff's "try REG 0..64 and watch for brightness change" is **disqualified by
+static analysis before any bytes are sent** — there is no path from report-0x06 `'S'`
+to `0x0F64`. Sending it would burn user keyboard-watching time to confirm a result the
+disassembly already proves.
+
+What *is* reachable and now decoded is the **effect op path**: `fcn.0000baa2` /
+`fcn.0000ba6b` emit `0x5A 0xF0 0x07 <op>` command blocks with a verified checksum at
+`0x11C7`, arm via `fcn.0000b893`, and apply via `fcn.0000d093` -> `0x0AA`. Op codes
+`0x10 / 0x12 / 0x16` are reachable from the key-matrix handler, and the payload is
+always the single byte at `0x0F22`.
+
+## REMAINING (M4)
+
+1. Set `0x0F22` (TX latch) to a chosen value and emit the `0x5A 0xF0 0x07 <op>`
+   command block over report 0x06 — the first host-driven effect change. Needs a new
+   probe tool; no bytes here are invented, every field is instruction-derived above.
+2. Find where the Fn-key matrix reader at `0x756a` writes `0x0F22` (that is the value
+   that actually determines the on-keyboard effect).
+3. Confirm whether `0x0F64` brightness is settable at all, or a pure Fn-key-only
+   control. Current evidence says **Fn-key only**.
+4. Side/case light zone (SETUP handler `fcn.0000131c`).
