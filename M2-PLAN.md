@@ -70,19 +70,35 @@ Sub-flags OR'd into 0x0F22:
 
 Brightness register `0x0F64` set to 0x3C (default 60) on solid-mode entry.
 
-## Register engine (DECODED)
+## Report sizes (from HID report descriptor — CONFIRMED)
 
-Report 0x06 `'S' 0x01 [reg] [b0 b1 b2 b3]` = register write; `'R' 'V'` = register read.
+- **Report 0x06** = 1031-byte feature report (count `0x0407`).
+- **Report 0x09** = 519-byte feature report (count `0x0207`).
+- Short `'S'` packets are accepted for the first packet but continuation stalls —
+  must send the full report size. (`sfull.rs` sends 1031 B; `save_color` sends 519 B.)
 
-`fcn.0000b7d2` (register engine):
-- register selector `0x0EFF`; data buffer at `0x0F07`.
-- `0x11C1 = 0x5A` (magic), `0x11C2 = op`.
-- **Register index N maps to XDATA address `0x11C0 + N`** (via `fcn.0000b800`: `0x11C3 = N`, addr = `0x11C0 + N`).
-- Register table lives at `0x11C1+` (also read at 0x6efd/0x9467/0xa281/0xb16f/0xba6d/0xbaa2/0xd9a4).
+## Register engine (DECODED — precise)
 
-Report 0x09 command set = flash/config channel (op codes 0x52/0x56/0x5e/0x6a), NOT the
-live lighting mode. Live mode/brightness/speed is set via the register protocol
-(report 0x06) OR internally (Fn-key / profile load).
+Report 0x06 `'S' 0x01 [reg] [b0 b1 b2 b3]` = register write; `'R' 'V' [reg]` = read.
+Exact layout (fcn.00005001; report ID is IN the buffer):
+```
+buf[0] = 0x06 (report ID)      buf[1] = 'S' (0x53) or 'R' (0x52)
+buf[2] = 0x01 / 'V' (0x56)     buf[3] = REG (read: 0x01=identity, 0x02=status)
+buf[4..7] = 4 data bytes (write)
+```
+
+`fcn.0000b7d2` (register WRITE, called with r7=value, REG already in 0x0EFF):
+- `0x11C1 = 0x5A` magic, `0x11C2 = value`, `0x11C3 = REG + 5`.
+- Register N → table offset `0x11C0 + N` (`fcn.0000b800`).
+- Checksum `fcn.0000d210` over `0x11C1..0x11C1+N` = `0xFF - sum`.
+
+Staged command register = **`0x11E0`** (0x5A = idle). Apply gate `fcn.0000d15f`:
+`0x11E0 != 0x5A` → `fcn.0000b490` (process staged config); `== 0x5A` → `fcn.0000249b`
+(mode manager).
+
+Report 0x09 command set = flash/config channel (op codes 0x52/0x54/0x56/0x5e/0x62/0x6a)
++ per-key color (`0x0a`) + apply (`0x0b`). **Zero writes to 0x0F54/0x0F64/0x0F65 in the
+entire 0x09 handler range** — live mode/brightness/speed is NOT on report 0x09.
 
 ## Command-message format (DECODED — the M2 key)
 
@@ -105,16 +121,36 @@ Checksum (`fcn.0000d210`): 8-bit additive, `0xFF - sum` over the block
 Full config block (`fcn.0000944d`): 19 bytes `0x11C1..0x11D3`, checksum at `0x11D8`
 (len r5=0x13) — matches the `'S'` handler's 19-byte apply trigger.
 
+## Effect definition tables (CODE memory — CONFIRMED)
+
+Two near-duplicate effect tables (likely two profiles / mode A-B):
+- `0xC000` & `0xC100`: 4-byte records, little-endian 16-bit params (0x29/0x35/0x2b/0x39...)
+- `0xC200` & `0xC300`: near-duplicates (differ at 0xC228 08→04, 0xC230.. etc.)
+- Reached via `movc` lookup (0x11df-0x11e6) using pointer `0x0EDC:0x0EDD` (set by `fcn.0000944d`).
+
+## Flash profile (defaults — CONFIRMED at 0xA418)
+
+```
+0xA426 = 0x35   (mode byte — matches mode command 0x35)
+0xA42C/2D = 0x04/0x04  (brightness/param)
+0xA42E = 0x63, 0xA42F = 0x01, 0xA430 = 0x01  (config)
+0xA437 = 0x01   (cmd byte)
+```
+
 ## OPEN QUESTION (blocks full M2)
 
-How does a HOST command reach `0x0F54`? Report 0x09 command set (0x03-0x0d) is
-flash/config programming (0x06 save, 0x05 flash-op, 0x0a per-key, 0x0b apply).
-`0x0F54` is set internally by the mode engine (fcn.0000100e) and Fn-key path.
-Candidate host path: report 0x06 'S' register-SET → 0x0F07 config buffer → 0x0F3E|=0x10.
-NEEDS EMPIRICAL CONFIRMATION.
+How does a HOST command reach `0x0F54` (live mode)? Established:
+- Report 0x09 = flash/config + per-key color + apply only (NO 0x0F54/0x0F64/0x0F65 writes).
+- Report 0x06 `'S'` register write → config table `0x11C0+`, ACKs but does NOT apply
+  to live lighting in empirical tests (needs the full command-message + apply gate).
+- `0x0F54` is set internally (Fn-key / profile load / mode engine `fcn.0000100e`).
 
-1. Full 16-effect list (what does effect 0..15 look like).
-2. Brightness write path (0x0F64) over report 0x09.
-3. Speed write path (0x0F65).
-4. How command byte 0x0F54 selects effect vs solid.
-5. Side/case light (separate zone — SETUP handler fcn.0000131c).
+Most likely remaining path: the mode/brightness/speed are part of the **flash profile**
+written via report 0x09 flash-op `0x54` (config write), OR the `'S'` register protocol
+requires the exact command-message sequence that arms `0x11E0` + apply gate.
+
+REMAINING:
+1. Exact `'S'` command-message byte sequence that arms `0x11E0` and applies mode.
+2. Brightness/speed write path (0x0F64/0x0F65).
+3. How 0x0F54 selects effect vs solid (full effect list).
+4. Side/case light (separate zone — SETUP handler fcn.0000131c).
