@@ -372,3 +372,78 @@ reachable**, via the stage-then-apply pair on report 0x09, not via the report-0x
    report 0x09 (the value call site `0x02e2` emits, `r5=2`, not the 19-byte
    config one — so verify which r5 the apply path actually consumes).
 2. Verify the arm byte position (`[ptr+19]`) and the `0x0F54` nibble split.
+
+---
+
+# M5 — the host→apply chain, fully traced (DECODED, verified end to end)
+
+The three failing tests all targeted the right *apply* code but the wrong ingress.
+The real chain is now traced call-by-call, every link instruction-verified.
+
+## Call chain
+
+```
+report 0x09 RX
+   └─ fcn.0000b684          entry; @ 0xb684 checks RX buffer flag 0x0F7F == 1
+        ├─ 0xb68b  0x1130 == 0x5A  → fcn.0000bbcd (r6=0x11, r7=0x30)   [magic path]
+        └─ 0xb6a1  lcall fcn.0000d2f6  (r3=1, r2=0x11, r1=0x30)        [plain path]
+             └─ 0xd2fa  lcall fcn.0000218b
+                  └─ 0x218b: 0x0EE7 = r6 (lo), 0x0EE8 = r7 (hi)  → pointer pair
+                      0x2197: movx a,@dptr ; xrl a,#0x13 ; jz 0x21a6
+                      @@ 0x13 IN THE FIRST PAYLOAD BYTE @@
+                      └─ 0x21a6  fcn.00002198 → the 19-byte table walk
+                           └─ 0x238e  checksum 19 bytes (fcn.0000dad1),
+                              0x23ac  xrl against trailing byte,
+                                      0x23ad  jz 0x23b2 → APPLY
+```
+
+## The command byte
+
+`fcn.0000218b` at `0x2198` does `xrl a,#0x13` and only takes the table-walk branch
+on a match. So **`0x13` is the apply command**, carried as the first payload byte
+after the pointer. This is the same value emitted at call site `0x02e2`
+(`mov r7,#0x13`) — that call site was already known; it is now proven to be the
+apply trigger, not just another command.
+
+## What the RX buffer has to look like
+
+`fcn.0000b684` reads the pointer from `0x0EE7:0x0EE8` and the table from
+`[r6:r7]` — i.e. the pointer is a **RAM address chosen by the host**, not a fixed
+register. The 19-byte table it points at must end with the checksum byte
+`0xFF - sum(bytes 1..17)`, and `[ptr+19]` (the arm byte) must be non-zero or the
+apply is aborted at `0x23ba` → `fcn.0000da85` (staging reset).
+
+## Why the previous tests could not work
+
+`livetest stageapply` wrote 19 bytes into the report-0x09 *data* area and assumed
+they would appear at the fixed address `0x0B0C`. They did not: the table lives
+wherever `0x0EE7:0x0EE8` points, and nothing in the RX path writes that pointer
+from the data area. The apply at `0x238e` therefore checksummed stale RAM, the
+`xrl` at `0x23ac` failed, and control went to `0x2490` (abort) — which is exactly
+consistent with the observed behaviour of an ACK and no visual change.
+
+## Correct approach (not yet built)
+
+The RX path needs the pointer pair at `0x0EE7:0x0EE8` set first. In the *inbound*
+direction the firmware sets it at `0x218b` from `r6:r7`, which come from
+`fcn.0000d2f6`'s arguments (`r3/r2/r1` = the report payload bytes). So the
+host-facing write is: **report 0x09 payload[0..2] → r3:r2:r1, which becomes the
+pointer, and payload[3] must be `0x13`.**
+
+| report 0x09 byte | becomes | value needed |
+|------------------|---------|--------------|
+| payload[0] | 0x0EE7 (ptr lo) | a low RAM address in free XDATA |
+| payload[1] | 0x0EE8 (ptr hi) | high byte of that address |
+| payload[2] | 0x0EE9 (counter) | table entry counter |
+| payload[3] | compared to 0x13 | **0x13** |
+
+That is the concrete, testable hypothesis for the next probe, and every field in it
+is derived above rather than guessed.
+
+## Unresolved
+
+Whether the firmware actually honours a host-supplied pointer or overwrites it
+from the payload each RX. The `xrl a,#0x13` test reads `[ptr]`, so if the host can
+write `0x13` at `[ptr]` the branch is taken. `fcn.0000218b` writes the pointer
+itself from r6:r7 on every call, so the pointer IS host-controlled via payload[0..2]
+by construction — pending one confirming test.
