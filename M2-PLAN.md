@@ -70,6 +70,20 @@ Sub-flags OR'd into 0x0F22:
 
 Brightness register `0x0F64` set to 0x3C (default 60) on solid-mode entry.
 
+## Register engine (DECODED)
+
+Report 0x06 `'S' 0x01 [reg] [b0 b1 b2 b3]` = register write; `'R' 'V'` = register read.
+
+`fcn.0000b7d2` (register engine):
+- register selector `0x0EFF`; data buffer at `0x0F07`.
+- `0x11C1 = 0x5A` (magic), `0x11C2 = op`.
+- **Register index N maps to XDATA address `0x11C0 + N`** (via `fcn.0000b800`: `0x11C3 = N`, addr = `0x11C0 + N`).
+- Register table lives at `0x11C1+` (also read at 0x6efd/0x9467/0xa281/0xb16f/0xba6d/0xbaa2/0xd9a4).
+
+Report 0x09 command set = flash/config channel (op codes 0x52/0x56/0x5e/0x6a), NOT the
+live lighting mode. Live mode/brightness/speed is set via the register protocol
+(report 0x06) OR internally (Fn-key / profile load).
+
 ## OPEN QUESTION (blocks full M2)
 
 How does a HOST command reach `0x0F54`? Report 0x09 command set (0x03-0x0d) is
