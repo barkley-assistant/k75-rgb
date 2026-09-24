@@ -36,12 +36,47 @@ color, brightness, and effect/pattern — so the daemon/GUI can expose them.
 | 0x0CC7 | effect selector | 0x01/0x02/0x03/0x04 = effect # |
 | 0x0CC8 | ? | |
 
-## Effect table
+## Effect table (CONFIRMED — ground truth from fw/k75_full.bin)
 
-- `0xDB76` = effect data table (movc-indexed), read into 0x0F83.
-- Effect index at 0x0F87 maps (stride 4) → 0x0CC7 = 1,2,3,4,...
+`0xDB76` = 16 effect codes (read via `movc`, indexed by effect counter):
 
-## TODO (map each)
+```
+01 02 03 04 05 07 08 09 0a 0b 0c 0d 0f 10 11 13
+#1 #2 #3 #4 #5 #6 #7 #8 #9 #10 #11 #12 #13 #14 #15 #16
+```
+
+- Skips `06`, `0e`, `12` — not valid effects.
+- Loaded into `0x0F83` (effect byte), then `0x0CC7` (effect selector 1-16).
+- Effect engine `fcn.0000b684` reads per-effect flags `0x0F8F/0x0F90/0x0F93/0x0F94/0x0F97/0x0F98`
+  and a 16-bit counter `0x0F3B:0x0F3C`, dispatching op codes `0x10/0x12/0x16/0x1c` via `fcn.0000baa2`.
+
+## Mode system (DECODED — full command → mode-flag map)
+
+`fcn.00000200` (lighting command dispatcher) decodes `0x0F54` → `0x0F22` (mode flag):
+
+| 0x0F54 (cmd) | 0x0F22 (mode flag) | meaning |
+|--------------|---------------------|---------|
+| 0x01 | 0x14 or 0x24 | solid/static |
+| 0x25 | 0x00 | mode 1 |
+| 0x35 | 0x01 | mode 2 |
+| 0x45 | 0x02 | mode 3 |
+| 0x55 | 0x03 | mode 4 |
+
+Sub-flags OR'd into 0x0F22:
+- `0x0F3F` == 0x11 → |= 0x04; == 0x12 → |= 0x08; == 0x22 → |= 0x0C
+- `0x0BCB` == 1 → |= 0x30; == 2 → |= 0x40
+- `0x0F3F` == 0x22 (with 0x0BCB==2) → |= 0x50/0x60/0x70/0x80
+- `0x0F50` == 1 → |= 0x80 (brightness channel)
+
+Brightness register `0x0F64` set to 0x3C (default 60) on solid-mode entry.
+
+## OPEN QUESTION (blocks full M2)
+
+How does a HOST command reach `0x0F54`? Report 0x09 command set (0x03-0x0d) is
+flash/config programming (0x06 save, 0x05 flash-op, 0x0a per-key, 0x0b apply).
+`0x0F54` is set internally by the mode engine (fcn.0000100e) and Fn-key path.
+Candidate host path: report 0x06 'S' register-SET → 0x0F07 config buffer → 0x0F3E|=0x10.
+NEEDS EMPIRICAL CONFIRMATION.
 
 1. Full 16-effect list (what does effect 0..15 look like).
 2. Brightness write path (0x0F64) over report 0x09.
