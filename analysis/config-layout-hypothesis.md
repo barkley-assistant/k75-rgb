@@ -61,3 +61,14 @@ per-key colors = the +0x21.. tail of the config image (or the separate
    0x45) via cmd 0x0a, then apply cmd 0x0b. Observe: rainbow → wave/other.
 2. If wedged: Fn+Esc hold ~3s recovers (proven).
 3. Binary-search the brightness/speed offsets the same way.
+## Ready-to-run test images (2026-09-24)
+
+- config-default-72.bin — factory profile verbatim (control; should reproduce
+  the current rainbow/solid state)
+- config-mode45-72.bin — mode byte 0x35 -> 0x45 (wave/ripple per the 0x0F54 map)
+- config-mode55-72.bin — mode byte 0x35 -> 0x55 (reactive mode)
+- config-speed20-72.bin — +0x16 0x63 -> 0x20 (speed candidate)
+
+Run: sudo tools/hidra_probe/target/debug/cfgwrite analysis/config-mode45-72.bin
+then watch the keyboard. Wedged? Fn+Esc hold ~3s. Only after a GOOD visual
+result: run save_color-style cmd 0x06 to persist.
