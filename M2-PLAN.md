@@ -447,3 +447,87 @@ from the payload each RX. The `xrl a,#0x13` test reads `[ptr]`, so if the host c
 write `0x13` at `[ptr]` the branch is taken. `fcn.0000218b` writes the pointer
 itself from r6:r7 on every call, so the pointer IS host-controlled via payload[0..2]
 by construction — pending one confirming test.
+
+---
+
+# M6 — corrections to M5 + the real staging pipeline (verified)
+
+## M5 errors (instruction-verified corrections)
+
+1. **The pointer is NOT host-controlled.** `fcn.0000d2f6` does `mov r6,0x02` /
+   `mov r7,0x01` — it copies the R2 and R1 *registers*, and its sole call site
+   (`0xb6a1`) has `R2=0x11, R1=0x30`. The pointer pair is therefore **always
+   0x1130**. "payload[0..2] sets the pointer" is wrong.
+2. `0x1130` is not "stale RAM" — it is **written by firmware**: `fcn.000096ce`
+   at `0x9741-0x974c` computes `dptr = 0x1130 + [0x0F73]` and stores a frame
+   byte. 20 bytes staged (`0x0F74 >= 0x14`) → `0x0F7F = 1` → `fcn.0000b684`
+   dispatches on `[0x1130]`: `0x5A` → `fcn.0000bbcd` (register block), else
+   `0x13` → apply via `fcn.0000218b`. The `0x13` finding itself is CORRECT.
+
+## The real effect-command pipeline
+
+```
+'S' write (report 0x06)            report 0x09, cmd 0x0a path
+  REG → 0x0EFF                       fcn.00009260
+  19 bytes → 0x0F07 buffer              └─ fcn.000096ce  (per byte)
+  0x0F3E |= 0x10                            src = [0x0F75:0x0F76] (set by fcn.0000b800)
+        │                                  dst = 0x1130 + [0x0F73]
+        └──→ report-0x09 engine             20 bytes → 0x0F7F = 1
+             fcn.0000b7d2 (r7=0xBB/0xC2/0xC3)   │
+             writes [0x5A, val, REG+5, ...]     ▼
+             at 0x11C1                    fcn.0000b684
+             fcn.0000b800 sets 0x0F75      [0x1130]==0x5A → fcn.0000bbcd
+                                          [0x1130]==0x13 → apply
+```
+
+The source pointer `0x0F75:0x0F76` is set by `fcn.0000b800` (address =
+`0x11C0 + (REG+5)`) — i.e. the 0x11C1 command block built by the register
+engine. So 'S' staging feeds the command block, and a report-0x09 command
+triggers the engine to consume it. The two channels are coupled exactly as
+M2's register-engine section describes.
+
+## Report-0x09 command table (COMPLETE, verified — corrects earlier labels)
+
+dispatch: `[0x08FB] - 3` → jump table `0x7a9f` (stride 3)
+
+| cmd | target | semantics |
+|-----|--------|-----------|
+| 0x03 | 0x7acf | sub-dispatch on `[0x08FC]`: 1→0x099de, 2→0x09a78, 3→0x0958f, 4→0x094ef (flash ops 0x62/0x5e...) |
+| 0x04 | fcn.00008402 | flash READ (op 0x52) |
+| 0x05 | fcn.00008fb9 | flash sub-op = `data[5] + 0x6e` (range 0x6e..0x75) |
+| 0x06 | fcn.00007393 | flash SAVE (op 0x56) — VERIFIED working |
+| 0x07 | (exit) | no-op |
+| 0x08 | fcn.00007108 | direct per-LED RGB (mul #0x12 stride) — family-verified layout `09 08 00 00 01 00 <len LE>` |
+| 0x09 | (exit) | no-op |
+| 0x0a | fcn.00009308 | flash WRITE (op 0x54) — VERIFIED: writes config region live (zero template = lights off) |
+| 0x0b | 0x7b40 | apply — VERIFIED working |
+| 0x0c | 0x7b40 | apply |
+| 0x0d | 0x7b40 | apply |
+| 0x0e | (exit) | no-op |
+
+## Live empirical result (2026-09-24)
+
+cmd 0x0a write of the F11 config template (mode@0x15, speed+bright@0x29)
+**did** alter the keyboard (lighting changed) but produced "all off" — the K75
+config layout differs from the F11's, and the zero-padded per-key color region
+kills the light. The write channel itself is confirmed live.
+
+## Family references (same vendor 0x258a, same command family)
+
+- RK M75 (0x0163): report 0x09, `09 08 00 00 01 00 7A 01` + 378B RGB = direct
+  LED frame; type 0x0B = status. (github Lightning-13/rk-m75)
+- Kreo Hive 65 (0x010c): report 0x06, same command 0x08 direct-LED layout,
+  520-byte frames; report 0x05 = ISP door. (github PushkarDesai-06/...)
+- OpenRGB F11 controller (report 0x06, cmd 0x03+0xB6 SetMode template with
+  mode@0x15, speed+brightness@0x29+(mode-2)*2, magic 5A A5, trailer
+  5A A5 03 03) — the template family, not honoured on K75 report 0x06.
+
+## NEXT probes (in priority order)
+
+1. `'S'` stage REG + 19-byte command block at 0x0F07, then trigger the
+   report-0x09 engine with cmd 0x0a/0x0b and watch for 0x0F7F consumption.
+   The block header should be 0x13 (apply) or 0x5A (register).
+2. Direct-LED frame via cmd 0x08 with the family header — per-key control
+   and software-driven patterns/brightness, regardless of firmware mode.
+3. Decode `fcn.0000bbcd` + `fcn.00002198` (the 0x1130 consumers) for the
+   exact 19-byte table walk to nail checksum + arm byte.
