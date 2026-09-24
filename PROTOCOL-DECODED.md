@@ -294,3 +294,18 @@ r5. The earlier "frame = 8:0xFA" was the value from one call path only.
 
 cmd 0x04/0x06 share path 0x8834 -> fcn.0000ecb8 (ISP-adjacent handler).
 fcn.00008838: bounds check then CODE table 0x0786 + index walk.
+
+## Read-path verdict (2026-09-24, live-probed)
+
+cmd 0x04 (op 0x52) with the activate marker payload[9]=1: GET 0x09 returns
+only the 8-byte ACK echo (09 04 00 00 00 00 00 00) — no 0x13 response marker,
+no data; interrupt-IN silent. The HID descriptor's report-0x09 input is only
+7 bytes. CONCLUSION: cmd 0x04 is an INTERNAL config reload (data-flash ->
+live per-key table via the 0x05F4-grid engine); there is NO host-visible
+config read on any channel. Config region mapping must come from controlled
+write tests (see analysis/config-layout-hypothesis.md).
+
+Also confirmed: cmd 0x0a routes to fcn.00005001 at 0x87bf (shared with the
+report-0x06 'S'/'R' protocol); with an RGB-filled payload the 'S'/'R' branches
+no-op, so the color effect comes from the cmd-0x0b apply reading the staged
+payload, not from fcn.00005001.

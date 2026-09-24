@@ -36,10 +36,13 @@ async fn main() {
     };
     eprintln!("opened: {}", path);
 
-    // SET: report 0x09, cmd 0x04, rest zero (firmware reads the config region)
+    // SET: report 0x09, cmd 0x04 (flash read, op 0x52).
+    // frame[1]=payload[0]=cmd; payload[9]=1 activates the read response
+    // (firmware writes 0x13 at payload[10] = frame[11]).
     let mut frame = vec![0u8; 520];
     frame[0] = 0x09;
     frame[1] = 0x04;
+    frame[10] = 0x01; // payload[9] = activate-read marker
     let set_res = tokio::time::timeout(Duration::from_millis(1500), dev.send_feature_report(&frame)).await;
     eprintln!("SET 0x04: {:?}", set_res);
 
