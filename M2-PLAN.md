@@ -531,3 +531,40 @@ kills the light. The write channel itself is confirmed live.
    and software-driven patterns/brightness, regardless of firmware mode.
 3. Decode `fcn.0000bbcd` + `fcn.00002198` (the 0x1130 consumers) for the
    exact 19-byte table walk to nail checksum + arm byte.
+
+---
+
+# M6.5 — live config-write test + recovery (2026-09-24)
+
+## What happened
+
+`modeprobe` wrote the F11 config template through cmd 0x0a (+apply) with the mode
+byte at offset 0x15. Result: **lighting went dark and stayed dark**; Fn+Backspace,
+Fn+↑, Fn+| did NOT recover; replug did NOT recover (garbage was saved via cmd 0x06).
+This proves: (a) the config write channel is live, (b) the K75 config layout ≠ F11
+template layout, (c) a malformed config persists and wedges the lighting engine.
+
+## Recovery (PROVEN)
+
+**Fn+Esc, hold ~3s = factory reset** — restored factory rainbow lighting and a sane
+config. This is the soft-recovery hatch for all future config probes. Full recovery
+remains sinowisp ISP re-flash (backups verified).
+
+## Config-region layout (new decode)
+
+- Save handler fcn.00007393 copies CODE table @0xAD7A → XDATA 0x0DB2+ (config
+  serialization region).
+- Boot config loader fcn.00007e86 (0x7eed) copies 6 bytes → 0x0F56+, 1 byte →
+  0x0F54 (mode), 1 byte → 0x0F50, sets 0x0F3D|=0x01 + 0x0F3E|=0x10, applies via
+  fcn.000029cd (0x0F1D).
+- Default profile: CODE @0xA418, 72 bytes, mode 0x35 at +0x0E; 0x04 0x04 at
+  +0x14/+0x15 (brightness?), 0x63 0x01 at +0x1A/+0x1B.
+- fcn.00006104 (0x6200+) = second defaults loader: copies CODE table → 0x0F56.
+
+## Next probes (updated)
+
+1. Read-side first: GET the config region via cmd 0x04 (flash read op 0x52) to map
+   the actual layout before writing again.
+2. Locate the mode byte by diffing config dumps taken in two known modes (factory
+   rainbow vs solid-color after Fn+Esc → Fn+| cycle).
+3. Only then write mode/brightness/speed fields — never a full template blind.

@@ -2,49 +2,33 @@
 
 ## What is VERIFIED (live-tested, traceable)
 
-1. **Report 0x06 register protocol** — `fcn.00005001` (@0x5001), fully decoded:
-   - `[06, 'S'(0x53), 0x01, REG, b0,b1,b2,b3]` = SET: REG→0x0EFF, 4 bytes→0x0F07 (via fcn.00002877)
-   - continuation (payload[1]≠1): 8 bytes/chunk at 0x0F07+offset, at ≥19B sets 0x0F3E|=0x10 (apply)
-   - `[06, 'R'(0x52), 'V'(0x56), 0x01]` = READ → identity string. **VERIFIED LIVE**: returns
-     `03 02 48 a3 a3 46 90 0f 50 e0 fe 56 a3 e4 53 ff ee 54 ...`
-   - `[06, 'R', 'V', 0x02]` → 0x0EDA=2; else 0x0EDA=0xFF
+1. **Color change + save** via report 0x09: cmd `0x0a` (config write, op 0x54,
+   fcn.00009308) + `0x0b` (apply) + `0x06` (save, op 0x56). Persists across
+   power-cycle and 2.4G wireless. Tools: `setcolor2`, `save_color`.
+2. **Report 0x06 register protocol** — fcn.00005001 (@0x5001), fully decoded:
+   - `[06, 'S'(0x53), 0x01, REG, b0..b3]` = SET: REG→0x0EFF, 4 bytes→0x0F07
+   - continuation: 8 bytes/chunk, at ≥19B sets 0x0F3E|=0x10 (apply)
+   - `[06, 'R'(0x52), 'V'(0x56), reg]` = read register (0x01/0x02 = identity)
+3. **Complete report-0x09 command table** (M6): 0x03 flash sub-dispatch, 0x04 flash
+   read (0x52), 0x05 flash sub-op, 0x06 save, 0x08 direct-LED (fcn.00007108),
+   0x0a config write (fcn.00009308), 0x0b/0x0c/0x0d apply.
+4. **Config region is host-writable** — live-verified: cmd 0x0a template writes
+   alter the applied config (turned lighting off when malformed).
+5. **Effect-command pipeline decoded** (M6): fcn.000096ce copies 20B block to
+   0x1130, 0x0F7F=1 gates fcn.0000b684 ([0x1130]==0x5A register, ==0x13 apply).
+6. **Recovery paths both proven**: Fn+Esc (hold 3s) factory reset; sinowisp ISP
+   full re-flash (backup MD5s verified across 4 dumps).
 
-2. **Report 0x09** = bulk upload (519B max), payload[0] echoed via GET 0x09 (status mirror 0x08FA..0x0901).
+## NOT yet done
 
-3. **Report 0x05** = only `[05 75]` (enter ISP) in normal mode; all else ignored.
+- **USB control of effects/brightness/speed** — config channel works but the K75's
+  config-region layout (mode byte offset etc.) differs from the F11 template family.
+  Next probes in M2-PLAN.md M6.
+- **Case/side underglow** — separate LED zone; Fn+Tab toggles manually; USB path
+  not yet decoded.
 
-4. **USB SETUP layer** — `fcn.0000131c` (@0x14a9): bRequest@0x114A, wValueLow@0x1149,
-   wValueHigh@0x114B (report type), wLength@0x114D/E. Data stage → 0x1100 buffer.
+## Lesson learned (2026-09-24)
 
-## Lighting architecture (decoded, not all live-verified)
-
-- `0x0F54` = command byte (0x01=solid, 0x25/0x35/0x45/0x55=modes 1-4)
-- `0x0F1D..0x0F20` = color [R,G,B,flags]
-- `0x0F22` = mode flag register; `0x0F3F` = mode byte; `0x0F3E` = apply flags (bit 0x10 = config-complete)
-- `fcn.000029cd` = color write [R,G,B,flags|0x80] → @0x0F1D → PWM
-- `fcn.0000d15f` = magic gate (0x11E0==0x5A → apply vs staged-config)
-- `fcn.0000b684` = command engine (0x0F7F gate, 0x1130 magic 0x5A, 0x0F55 activity dispatch)
-- `fcn.00006efd` = LED effect table writer (per-key stride 0x16, table @0x0C52+, key index 0x0CC1)
-- GPIO/LED port SFRs: 0x91/0x93/0x97/0x99/0x9a (bit-toggled by scan engine)
-
-## THE GAP (why M1 not yet achieved)
-
-The write path is: USB bytes → config buffer (0x0F07 / 0x1100) → command engine
-(fcn.0000b684/bbcd/d2f6) → state registers (0x0F54 command, 0x0F1D color) → effect engine
-(fcn.000029cd) → PWM.
-
-I have every stage decoded EXCEPT the exact **field-level byte mapping** at the
-config-buffer → state-register handoff (which offset in the 'S' 0x07 buffer is the command,
-which is R, which is G/B, and what REG index selects the color vs mode register).
-
-This is the one remaining unknown to produce a *correct* M1 packet. I will NOT fire
-invented bytes (hard rule).
-
-## Next steps (zero-guessing options)
-
-A. Finish tracing fcn.0000bbcd / fcn.0000d2f6 (the 0x1130/0x1100 config-buffer consumers)
-   to close the buffer→register mapping.
-B. Bring in the advanced agent the user offered for a second pass on this specific mapping.
-C. Empirical but traceable: fire a *documented* sequence of 'S' 0x01 writes with a single
-   register index and observe board state (each byte still traces to decoded code; the
-   register index is the only variable being probed, not invented packet structure).
+Writing a malformed config (0x0a) + saving (0x06) **persists garbage** that wedges
+the lighting engine — Fn keys stop recovering it. Fn+Esc factory reset is the fix.
+Probe config writes only with the recovery route ready and prefer read-side probes.
