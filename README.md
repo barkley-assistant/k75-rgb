@@ -63,5 +63,8 @@ ISP sequence: `0x75` enter ISP → `0x55` enable firmware → `0x52` read / `0x5
 
 ## License
 
-Reverse-engineering work. No license chosen yet — proprietary firmware dumps are
-included for research purposes only.
+[GPL-3.0](LICENSE) — free software, so others can build on the RE work.
+
+Note: the `fw/` directory contains proprietary firmware dumps (RedThunder / Sino
+Wealth) included strictly for reverse-engineering research; those binary blobs are
+**not** covered by this project's GPL license.
