@@ -84,6 +84,27 @@ Report 0x09 command set = flash/config channel (op codes 0x52/0x56/0x5e/0x6a), N
 live lighting mode. Live mode/brightness/speed is set via the register protocol
 (report 0x06) OR internally (Fn-key / profile load).
 
+## Command-message format (DECODED — the M2 key)
+
+The register/config block (`0x11C1+`) is a **command message with checksum**:
+
+```
+offset  value             meaning
+0x11C1  0x5A              magic header
+0x11C2  0xF0 (or 0xD2)    command type (0xF0 = effect/set, 0xD2 = config)
+0x11C3  0x07              sub-type (0x07 = effect op)
+0x11C4  <op>              effect op (0x10/0x12/0x16/0x1c = effect selector)
+0x11C5  0x00/0x01         flag (r5)
+0x11C6  0x00/0x01         flag (r3)
+0x11C7  <checksum>        = 0xFF - sum(0x11C2..0x11C6)
+```
+
+Checksum (`fcn.0000d210`): 8-bit additive, `0xFF - sum` over the block
+(skipping the 0x5A magic). For effect cmd: `checksum = 0xFF - (0xF0 + 0x07 + op + f1 + f2)`.
+
+Full config block (`fcn.0000944d`): 19 bytes `0x11C1..0x11D3`, checksum at `0x11D8`
+(len r5=0x13) — matches the `'S'` handler's 19-byte apply trigger.
+
 ## OPEN QUESTION (blocks full M2)
 
 How does a HOST command reach `0x0F54`? Report 0x09 command set (0x03-0x0d) is
