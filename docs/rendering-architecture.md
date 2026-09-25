@@ -73,11 +73,33 @@ the **only traced host-reachable write into the effect system**: `0x0F3F`
 (effect index) feeds the effect-code computation that ends at `0x0F83`, whose
 value `0x13` selects the custom/static matrix renderer `0x2dac`.
 
-The remaining unproven link is the exact `0x0F3F -> 0x0F83` mapping (which
-effect index selects code `0x13`) and whether setting it also arms `0x0C4D
-= 0x69`. This is the highest-value next live test, and it is **RAM-only and
-reversible** (no save, no reload), so it is safe to probe once per baseline
-under the existing rules.
+### Ingress (how the block actually reaches the device)
+
+The `0x1130` block is **not** carried by the 520-byte `0x08` matrix report. It
+is delivered by a separate byte-stream ingress, fully traced:
+
+- Incoming byte is staged at XDATA **`0x0EF6`**.
+- `0x0F79:0x0F78` is a 16-bit byte counter, incremented per byte (`0x9703`),
+  capped at `0x1E` (30). `0x0F74` is the current write offset.
+- While `0x0F3F == 0x22` **and** `0x0F54 == 0x01` (factory mode) **and**
+  offset < 20 (`0x14`), each byte is copied from `0x0EF6` into
+  `0x1130 + offset` (`0x973C..0x974C`, entry `0x9722`). The copy is raw —
+  `0x295c`/`0x28e3` are generic pointer/bounds helpers, no transform.
+- At 20 bytes, `0x0F7F = 0x01` (`0x9759`), arming the block; `0xB684` then
+  checks `0x0F7F == 1` and `0x1130 == 0x5A` and calls `0xBBCD` (`0xB696`),
+  which dispatches on the command byte.
+
+So the register block is a **20-byte raw block beginning `0x5A 0xAC <idx>
+…`**, streamed in. The carrier report/command that sets `0x0F3F = 0x22` and
+`0x0F54 = 0x01` first is still to be pinned to a specific report ID — it is
+the mode/effect-setting command, not `0x08`.
+
+### Remaining unproven link
+
+The exact `0x0F3F -> 0x0F83` mapping (which effect index selects code `0x13`)
+and whether setting it also arms `0x0C4D = 0x69`. This is the highest-value
+next live test, and it is **RAM-only and reversible** (no save, no reload), so
+it is safe to probe once per baseline under the existing rules.
 
 ## What is NOT yet proven
 
