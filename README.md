@@ -22,16 +22,23 @@ All findings live in [`docs/`](docs/) — start with the
 - **M1 — color change** ✅ verified live (wired + 2.4G wireless)
 - **Persistence (save)** ✅ verified — survives power-cycle and wireless mode
 - **Mode/speed mapping** 🔬 `+0x0E` was misidentified as the mode byte; later disassembly maps it to speed-related register `0x0CC8`. `+0x1F` feeds mode register `0x0F54`. No static-mode control has been established.
-- **Per-key / side light** 🔬 a 21×6 RGB matrix writer exists internally, but the host packet path and physical key mapping are not yet proven. The side/case output remains unidentified; see [protocol audit](docs/protocol-audit.md).
+- **Per-key / side light** 🔬 report-0x09 command `0x08` is traced from USB receive to a 21×6 RGB matrix and visually verified: slot 0 lights Esc green and slot 63 lights the UK `;` key green against otherwise red keys. Each frame expires after about two seconds; bounded host streaming kept it lit until the sends stopped. The case remained rainbow. Other key slots and independent case-light control remain unmapped; see [protocol audit](docs/protocol-audit.md).
 
 ## Running
 
 ```sh
 cd tools/hidra_probe
-cargo build --release
-sudo ./target/release/save_color FF 00 00   # set all keys red + save
-sudo ./target/release/cfgwrite ../../analysis/config-mode45-72.bin  # write a config image
+cargo build --release --bin matrix08 --bin get09_readonly
+./target/release/matrix08 baseline                 # offline frame preview
+sudo ./target/release/get09_readonly               # read-only feature response
 ```
+
+`matrix08 baseline --send` is a volatile test that writes the complete red
+matrix and does **not** save it. `matrix08 slot 63 --send` changed only the
+UK `;` key to green in a live test; `--repeat 16` bounds a half-second host
+refresh experiment that kept the keys lit while it ran. The key lights turn
+off again when refresh stops; the case light stayed rainbow. Do not run the
+older save/config probes as part of this experiment.
 
 Requires `sudo` (raw HID access to the vendor interface).
 

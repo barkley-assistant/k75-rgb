@@ -1,5 +1,14 @@
 # K75 Firmware — fcn.00001b46 & fcn.000057db Decode + Report-0x09 Frame→State Map
 
+> **Historical analysis; do not use this document to build USB packets.**
+> Its sections contradict each other and the subsequently traced receive path.
+> Claims that XDATA `0x1100..0x1303` is a contiguous 519-byte report, that
+> `0x1150` is any host payload byte, or that XDATA addresses are report offsets
+> are wrong. `0x1150` is transfer state, and `0x7253` copies successive
+> eight-byte USB chunks from `0x1100` to `0x08FA`. The **VERIFIED** labels below
+> are historical labels and do not establish host packet layout. Use
+> [the current ingress audit](../docs/protocol-audit.md) instead.
+
 Static analysis of the SH68F90A disassembly (`disasm_v2.txt`). Addresses = file offsets. Only instruction-derived claims are made; each claim is tagged **VERIFIED** (trace complete), **INFERRED** (a link is missing), or **UNKNOWN**.
 
 ---

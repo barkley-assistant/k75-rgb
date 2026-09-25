@@ -32,7 +32,11 @@ Reverse-engineering the proprietary RGB protocol of the RedThunder K75
    The red keys still showed a moving wave, not a static effect.
 2. **The old mode claim was retracted.** `+0x0E` feeds `0x0CC8`
    (speed-related), while `+0x1F` feeds mode register `0x0F54`.
-3. **Matrix control is not yet host-verified.** The internal `0x08` handler
-   writes 21×6 RGB slots; the side/case output is still unidentified.
+3. **Per-key control was visually verified.** A complete command-`0x08` red
+   frame lit the keys; slot 0 turned Esc green and slot 63 turned the UK `;`
+   key green against otherwise red keys. The key lights went off after about
+   two seconds, while a bounded repeated-frame test kept them lit until
+   streaming stopped. The case side light stayed rainbow; see
+   [protocol-audit.md](protocol-audit.md).
 4. **Read [protocol-audit.md](protocol-audit.md)** before running a probe;
    the old `setkey` and `sidelight` programs are disabled.

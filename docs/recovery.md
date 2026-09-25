@@ -45,6 +45,9 @@ Read this before probing the device.
 - Config-write tests: one byte at a time, no save, Fn+Esc ready.
 - The 72-byte factory image (`analysis/config-default-72.bin`) is the
   known-good baseline — the control test is part of every session.
-- Do not infer safety or host reachability from the internal `0x08` matrix
-  handler at `0x7108`. The former 18-byte `sidelight` probe is disabled; its
-  report-to-handler path and full data layout were never proven.
+- Report-0x09 command `0x08` has a traced host-to-RAM-matrix path and two
+  visibly verified slots: slot 0 controls Esc, slot 63 controls the UK `;`
+  key. The complete red baseline and each isolated green slot lit the keys
+  for about two seconds; bounded repeated reports kept them lit until
+  streaming stopped. The case stayed rainbow and is not mapped by this test.
+  The old 18-byte `sidelight` probe remains disabled.

@@ -49,7 +49,7 @@ async fn main() {
     frame[0] = 0x0a;
     let mut i = 1;
     while i + 2 < 519 { frame[i]=r; frame[i+1]=g; frame[i+2]=b; i+=3; }
-    println!("cmd 0x0a (per-key write) -> {}", send9(&dev, &frame).await);
+    println!("cmd 0x0a (config/flash-buffer stage) -> {}", send9(&dev, &frame).await);
     tokio::time::sleep(Duration::from_millis(150)).await;
 
     // Step 2: apply (cmd 0x0b) — triggers fcn.000029cd on 0x0F1D

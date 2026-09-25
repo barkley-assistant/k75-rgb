@@ -99,11 +99,17 @@ outer loop runs 21 times (`0x723E–0x724C`), the inner loop 6 times
 `0x08FA + 8 + row×18 + column×3 + channel`; destination address:
 `0x0379 + row×18 + column×3 + channel` (126 slots, 378 bytes).
 The effect engine accesses `0x0379` with the same 18-byte stride at `0x2DD6`.
-**Neither physical-key order nor side-light membership is established.** The
-18-byte `sidelight` probe misidentified this table and is disabled. Also, this
-internal dispatcher is not yet connected to the external report-0x09 host
-frame: `0x87BF–0x87F2` handles the `0x1150` host buffer separately. See
-[protocol-audit.md](protocol-audit.md).
+The report-0x09 feature receive path at `0x8906`, `0x8765`, `0x7253` and
+`0xB0A8` stages its chunks from XDATA `0x1100` to `0x08FA` and dispatches
+only after the transfer completes. `0x1150` stores USB transfer state, **not**
+a host command byte. This connects the command-`0x08` matrix source to complete
+report offsets 8..385. The full red frame visibly lit the keys; changing
+slot 63 to green lit the UK `;` key next to L, and changing slot 0 lit Esc,
+while the case stayed rainbow. The display lasted about two seconds per
+frame, and repeated RAM-only frames kept it lit while streaming. Other
+physical-key positions and independent case-light control remain unknown.
+The old 18-byte `sidelight` probe misidentified the table and is disabled.
+See [protocol-audit.md](protocol-audit.md).
 
 ## 8. Flash read command (cmd 0x04) internals
 

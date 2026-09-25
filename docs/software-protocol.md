@@ -1,6 +1,10 @@
 # Official Software Protocol (decompiled from RedThunder K75 UK Setup v2.0)
 
-**Status:** static-analysis findings from the vendor's own Windows control tool.
+**Status:** static-analysis findings from the vendor's Windows control tool.
+The checksummed `0x44` application format below has **not** been shown to
+select the connected keyboard's firmware matrix command `0x08`. Do not use
+this format to infer the offsets or checksums of `matrix08`; the live K75
+firmware/transport trace is in [protocol-audit.md](protocol-audit.md).
 **Method:** Inno Setup extraction → Ghidra 12.1.4 headless analysis of `OemDrv.exe`
 (MSVC x86, MFC) → decompilation of every function referencing
 `HidD_SetFeature` / `HidD_GetFeature` (42 functions, module @

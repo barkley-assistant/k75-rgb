@@ -27,11 +27,13 @@ On hidraw, feature reports carry the report ID as the first byte.
 
 ## 3. Report 0x09 — the main channel
 
-Payload = 519 bytes: `payload[0]` = command, `payload[1..]` = data.
-The host-command processor reads XDATA `0x1150`. A separate internal
-command dispatcher reads `0x08FA` (`0x08FB` selects its command). The transfer
-or relationship between the two buffers is **not yet established**; an
-internal source offset of 8 is not a host-report payload offset.
+The complete feature report is 520 bytes: report ID `0x09` at offset 0,
+command at offset 1, and 518 further bytes. The receiving transfer state is
+stored at XDATA `0x1150` (not a payload byte); firmware stages each eight-byte
+USB chunk from `0x1100` into `0x08FA + report_offset`. The command at host
+offset 1 reaches the internal dispatcher at `0x08FB` once the transfer ends.
+The command-`0x08` RGB data begins at **complete report offset 8**, not at
+payload offset 1. See [the traced ingress path](protocol-audit.md).
 
 ### Command table (live-verified where marked)
 
@@ -41,10 +43,22 @@ internal source offset of 8 is not a host-report payload offset.
 | 0x04 | **flash read / internal config reload** (op 0x52) | **FORBIDDEN**: live-tested lights-off failure not restored by known USB commands. Fn+Esc restored the device. Not a host-visible read. |
 | 0x05 | flash sub-op | |
 | 0x06 | **save** (op 0x56) | commits staged data to data-flash. Persistence of a color setting was verified across power-cycle + 2.4G; do not save unvalidated config. |
-| 0x08 | **internal matrix transfer candidate** | `0x7108` writes 21×6×RGB to XDATA `0x0379`; host report path and prefix are **not established**. The former 18-byte side-light probe was invalid and is disabled. |
-| 0x0a | **staging/config write** | `0x9308` performs a flash-buffer write, not positional per-key RGB. Full red payload + `0x0b` changed key colors live; exact path from the USB buffer through staging remains under investigation. |
+| 0x08 | **volatile RGB matrix write** | Firmware-traced host ingress; 126 RGB slots at complete report offsets 8..385. A red baseline visibly lit the keys; slot 0 turned Esc green and slot 63 turned the UK `;` key green. The keys reverted to off after about two seconds without refresh; the case stayed rainbow. Not a six-side-LED packet. |
+| 0x0a | **staging/config write** | `0x9308` performs a flash-buffer write, not positional per-key RGB. Full red payload + `0x0b` changed key colors live; the new USB ingress trace reaches this branch, but its exact visible-state semantics remain under investigation. |
 | 0x0b | **apply** | applies the staged config/colors to the lighting engine. ✅ VERIFIED. |
 | 0x0c / 0x0d | apply variants | decoded in dispatcher; 0x0b is the proven one |
+
+### Traced RAM-matrix experiment (slots 0 and 63 visually validated)
+
+`matrix08 baseline` prints an offline dry run. `matrix08 baseline --send` sends
+one complete, uniform red matrix without saving it. `matrix08 slot 0 --send`
+turned Esc green; `matrix08 slot 63 --send` turned the UK `;` key next to L
+green while leaving the other keys red. The case light stayed rainbow. The
+key lights turned off after roughly two seconds. A bounded run of
+`matrix08 slot 63 --send --repeat 16` resent the *same* RAM-only frame every
+500 ms; that kept the keys lit during the run, then they turned off after it
+stopped. Those two slots agree with the vendor LED-ID table, but the remaining
+slots and a firmware-persistent mode have not been verified.
 
 ### Working sequences
 
@@ -95,18 +109,25 @@ chunks; at ≥19 bytes staged, 0x0F3E |= 0x10.
 Only reg 0x01/0x02 return anything useful (identity string). Others return
 0x55/0xFF. **Dead end for live state reads** — confirmed empirically.
 
-## 5. Frame buffer layout (XDATA)
+## 5. USB-transfer and matrix buffers (XDATA)
 
 | Address | Meaning |
 |---|---|
-| 0x1100–0x114F | header/magic region (below the payload buffer) |
-| 0x1150 | payload[0] = command byte |
-| 0x1151.. | payload[1..] (RGB data / config image) |
-| 0x1155 | payload[5] — effect-flags byte |
-| 0x08FA | separate internal command/working region; `0x08FB` selects an internal command. Relationship to the external report is unknown. |
-| 0x1130 | 20-byte register block workspace (`[0x5A, cmd, ...]` consumed by fcn.0000bbcd) |
-| 0x11C1 | staged command-message block (19 B: 0x5A magic, type, sub, op, flags, checksum) |
-| 0x0EEE–0x0EF0 | flash-op entry convention: r6:r7:r5 stored at entry by every handler |
+| 0x1100..0x1107 | Eight-byte USB data-chunk source used by the report-0x09 staging loop. |
+| 0x1108..0x110F | Eight-byte USB response workspace. |
+| 0x1149..0x114E | Report/interface selection and requested transfer length used by the USB setup paths. |
+| 0x1150 | USB-transfer state (`0x0B` for report-0x09 receive), **not** a host packet byte. |
+| 0x08FA.. | Staged report and internal render scratch. On completed report-0x09 reception, `0x08FB` is the command byte, while `0x0902..0x0A7B` is the command-0x08 matrix source. |
+| 0x0379..0x04F2 | Internal 126-slot RGB matrix. |
+| 0x1130 | Register-block workspace (`[0x5A, cmd, ...]` consumed by `0xBBCD`). |
+| 0x11C1 | Staged command-message workspace; **not** report offset `0xC1`. |
+| 0x0EEE..0x0EF0 | Flash-operation entry convention: pointer/offset values stored at handler entry. |
+
+Do not equate absolute XDATA addresses with offsets in a 520-byte host report;
+the eight-byte staging copy is the reason offsets 8..385 can be assigned to
+host RGB data. Older notes treating `0x1100..0x1303` as one contiguous DMA
+frame, or `0x1150` as host `payload[0]`, are superseded.
+
 
 ## 6. Proven recovery
 
