@@ -14,34 +14,34 @@ vector region revealed the full **0x0F54 mode dispatch** plus
 
 ## 2. State registers (live XDATA)
 
-| Register | Meaning | Host path |
+| Register | Firmware role | Host control status (not a complete writer audit) |
 |---|---|---|
-| 0x0F3F | effect index (0–15) | **none** — only firmware constants or config load |
-| 0x0F83 | effect code (dispatch value for fcn.0000a6de) | none |
-| 0x0F54 | mode byte | **none** (0x01/0x25/0x35/0x45/0x55) |
-| 0x0F64 | brightness (default 0x3C = 60) | **none** |
+| 0x0F3F | effect index (0–15) | no independent live host write demonstrated |
+| 0x0F83 | effect code (dispatch value for fcn.0000a6de) | unproven |
+| 0x0F54 | mode byte | no independent live host write demonstrated (0x01/0x25/0x35/0x45/0x55) |
+| 0x0F64 | brightness (default 0x3C = 60) | no independent live host write demonstrated |
 | 0x0F22 | mode flags | derived from 0x0F54 |
-| 0x0F3E | apply gate (0x10 set = apply staged) | via 'S' staging only |
+| 0x0F3E | apply gate (0x10 set = apply staged) | `'S'` staging path, full apply still unverified |
 | 0x0F5B | data-flash engine arm (0x5A → fire) | indirect |
 | 0x0F80 | staged flash op | indirect |
-| 0x0EFF | register-write target select | 'S' protocol only |
-| 0x0EE7:0x0EE8 | physical key row:col (matrix scan output) | none |
+| 0x0EFF | register-write target select | `'S'` staging path |
+| 0x0EE7:0x0EE8 | physical key row:col (matrix scan output) | unproven |
 | 0x0EEE–0x0EF0 | flash-op frame pointer (r6:r7:r5) | from caller |
 
-**The decisive finding:** 0x0F3F, 0x0F54 and 0x0F64 have **no live-frame
-path**. Their only writers are firmware constants (Fn-key handlers) and the
-config-load path. Host control of mode/brightness/speed therefore goes
-through the **config region write** (cmd 0x0a) — nothing else reaches them.
+The examined writers of `0x0F3F`, `0x0F54`, and `0x0F64` include firmware
+constants (Fn-key handlers) and config-load code. No independent host-to-live
+register frame has been demonstrated. This does **not** rule out other
+host-reachable writers; the `'S'` staging path still needs full tracing.
 
 ### Mode map (0x0F54 → 0x0F22, from the 0x66 processor)
 
 | 0x0F54 | flags | observed live |
 |---|---|---|
-| 0x01 | OR 0x01 | |
-| 0x25 | 0x00 | |
-| 0x35 | 0x01 | static rainbow (factory default) |
-| 0x45 | 0x02 | **multi-color wave** (confirmed 2026-09-24) |
-| 0x55 | 0x03 | |
+| 0x01 | OR 0x01 | factory default: moving rainbow wave |
+| 0x25 | 0x00 | effect varies with other registers |
+| 0x35 | 0x01 | effect varies with other registers |
+| 0x45 | 0x02 | effect varies with other registers |
+| 0x55 | 0x03 | effect varies with other registers |
 
 ## 3. Effect index → code → handler chain
 
@@ -91,13 +91,19 @@ Register engine `fcn.0000b7d2` builds it from REG → 0x0EFF + r7 = value;
 called only at 0x7540 (inside `fcn.0000b684`, the report-0x09 engine) with
 r7 = 0xBB.
 
-## 7. Direct-LED (cmd 0x08)
+## 7. Internal RGB matrix writer (command 0x08 in the `0x08FA` dispatcher)
 
-`fcn.00007108`: 6 iterations × 3 bytes from `frame[r5 + i×3]` → XDATA
-0x0379 + i×3 (18 bytes total). Consumer: effect engine at 0x2dd6 reads the
-0x0379 zone with stride 0x12; status flag at [0x0375].
-The RK M75/Kreo family header (`09 08 00 00 01 00 <len> <RGB...>`) is
-misaligned for this — that's why the family-format direct-LED test failed.
+`0x7B35` calls `0x7108` with base XDATA `0x08FA` and source offset 8. The
+outer loop runs 21 times (`0x723E–0x724C`), the inner loop 6 times
+(`0x711D–0x7127`), with three channels per slot. Source address:
+`0x08FA + 8 + row×18 + column×3 + channel`; destination address:
+`0x0379 + row×18 + column×3 + channel` (126 slots, 378 bytes).
+The effect engine accesses `0x0379` with the same 18-byte stride at `0x2DD6`.
+**Neither physical-key order nor side-light membership is established.** The
+18-byte `sidelight` probe misidentified this table and is disabled. Also, this
+internal dispatcher is not yet connected to the external report-0x09 host
+frame: `0x87BF–0x87F2` handles the `0x1150` host buffer separately. See
+[protocol-audit.md](protocol-audit.md).
 
 ## 8. Flash read command (cmd 0x04) internals
 

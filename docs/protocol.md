@@ -1,13 +1,15 @@
-# K75 RGB — Verified Protocol Reference
+# K75 RGB — Working Protocol Reference
 
-Everything in this file has been **live-tested against the real keyboard** or
-is instruction-verified against the stock firmware disassembly. Anything
-unverified is marked as such.
+This is a working reference, not a complete verified protocol. Read the
+[protocol audit](protocol-audit.md) before using any of the older probe commands:
+several interpretations of the matrix and config-write paths were disproved by
+later live tests. An ACK is not evidence of a lighting change.
 
 ## 1. Device
 
-- **RedThunder K75**, en-GB (UK ISO) layout — 81-key LED matrix (verified: no
-  upper-bound check exists in firmware, so en-GB shares the ANSI matrix).
+- **RedThunder K75**, user's en-GB (UK ISO) layout. The firmware scans a
+  6×16 key matrix, but the vendor LED IDs have not been mapped to host RGB
+  slots.
 - USB ID `258a:019d`, "SINO WEALTH Gaming Keyboard". Two interfaces:
   - iface 0 — standard HID keyboard
   - iface 1 — vendor / RGB control (the one all probes talk to)
@@ -26,42 +28,53 @@ On hidraw, feature reports carry the report ID as the first byte.
 ## 3. Report 0x09 — the main channel
 
 Payload = 519 bytes: `payload[0]` = command, `payload[1..]` = data.
-Firmware lands the payload at **XDATA 0x1150**; a second staging buffer at
-**XDATA 0x08FA** serves the flash-op handlers (data at offset +8).
+The host-command processor reads XDATA `0x1150`. A separate internal
+command dispatcher reads `0x08FA` (`0x08FB` selects its command). The transfer
+or relationship between the two buffers is **not yet established**; an
+internal source offset of 8 is not a host-report payload offset.
 
 ### Command table (live-verified where marked)
 
 | cmd | Meaning | Notes |
 |---|---|---|
 | 0x03 | flash sub-dispatch | sub-op from payload |
-| 0x04 | **flash read / internal config reload** (op 0x52) | ⚠ NOT a host-visible read. Reloads data-flash → live lighting state. Firing it re-applies whatever config is saved in flash — this caused a lights-off incident when flash held a stale bad config. Do not send unattended. |
+| 0x04 | **flash read / internal config reload** (op 0x52) | **FORBIDDEN**: live-tested lights-off failure not restored by known USB commands. Fn+Esc restored the device. Not a host-visible read. |
 | 0x05 | flash sub-op | |
-| 0x06 | **save** (op 0x56) | commits the staging buffer to data-flash (~380 B, ends with 0xAA magic at 0x0BC7). ✅ VERIFIED: persists across power-cycle + 2.4G. |
-| 0x08 | **direct-LED** | 6×RGB (18 bytes) from frame → XDATA 0x0379 zone. Likely the side/case underglow strip (untested live). |
-| 0x0a | **config write** (op 0x54) | writes config data to the flash write-buffer. ✅ VERIFIED: reaches the config engine (mode changes work). |
+| 0x06 | **save** (op 0x56) | commits staged data to data-flash. Persistence of a color setting was verified across power-cycle + 2.4G; do not save unvalidated config. |
+| 0x08 | **internal matrix transfer candidate** | `0x7108` writes 21×6×RGB to XDATA `0x0379`; host report path and prefix are **not established**. The former 18-byte side-light probe was invalid and is disabled. |
+| 0x0a | **staging/config write** | `0x9308` performs a flash-buffer write, not positional per-key RGB. Full red payload + `0x0b` changed key colors live; exact path from the USB buffer through staging remains under investigation. |
 | 0x0b | **apply** | applies the staged config/colors to the lighting engine. ✅ VERIFIED. |
 | 0x0c / 0x0d | apply variants | decoded in dispatcher; 0x0b is the proven one |
 
 ### Working sequences
 
-**Change color (VERIFIED, M1):**
+**Change key colors (observed live; exact RAM/flash staging semantics still open):**
 ```
-send feature 0x09: [0x0a, R,G,B, R,G,B, ...]  (RGB triplets across payload)
+send feature 0x09: [0x0a, R,G,B, R,G,B, ...]  (full payload filled)
 send feature 0x09: [0x0b, 0, 0, ...]          (apply)
 ```
+A full-red payload made the keys red after Fn+PgUp had turned the key lights
+off. A moving dim-red wave remained visible. This is **not** a proven static
+mode or positional per-key RGB packet. The zero-filled `setkey` variant blanked
+key lighting and has been disabled.
 
 **Save / persist (VERIFIED):**
 ```
 send feature 0x09: [0x06, 0, ...]             (save = flash op 0x56)
 ```
 
-**Change lighting mode via config (VERIFIED, 2026-09-24):**
+**Config-image writes (effects still under investigation):**
 ```
-send feature 0x09: [0x0a, <72-byte config image at payload[1..]>]
-send feature 0x09: [0x0b, ...]                (apply)
+send feature 0x09: [0x0a, <72-byte image at payload[1..]>]
+send feature 0x09: [0x0b, ...]
 ```
-The config image's mode byte at offset `+0x0E` (0x35 = rainbow, 0x45 = wave)
-takes effect immediately on apply. See [config-region.md](config-region.md).
+These writes produced visible changes in some live sessions. The initial claim
+that profile byte `+0x0E` selected static versus wave was **retracted** after
+a factory reset established that the default is already a moving rainbow wave.
+Later firmware analysis maps `+0x0E` to speed-related register `0x0CC8` and
+`+0x1F` to mode register `0x0F54`. See
+[test-session-2](../analysis/test-session-2.md) and the
+[protocol audit](protocol-audit.md).
 
 ## 4. Report 0x06 — register protocol
 
@@ -90,7 +103,7 @@ Only reg 0x01/0x02 return anything useful (identity string). Others return
 | 0x1150 | payload[0] = command byte |
 | 0x1151.. | payload[1..] (RGB data / config image) |
 | 0x1155 | payload[5] — effect-flags byte |
-| 0x08FA | second staging buffer for flash ops (cmd 0x04 reads here; flash handlers receive r6:r7 = 0x08FA, r5 = 8) |
+| 0x08FA | separate internal command/working region; `0x08FB` selects an internal command. Relationship to the external report is unknown. |
 | 0x1130 | 20-byte register block workspace (`[0x5A, cmd, ...]` consumed by fcn.0000bbcd) |
 | 0x11C1 | staged command-message block (19 B: 0x5A magic, type, sub, op, flags, checksum) |
 | 0x0EEE–0x0EF0 | flash-op entry convention: r6:r7:r5 stored at entry by every handler |
@@ -104,4 +117,4 @@ nuclear option in [recovery.md](recovery.md).
 
 1. Every packet sent must trace to a live capture or a disassembly offset.
 2. Never send flash-erase (0x45) on the ISP channel.
-3. Probe config writes only with Fn+Esc ready; never fire cmd 0x04 unattended.
+3. Never send report-0x09 command 0x04; an ACK is not evidence of safe behavior.

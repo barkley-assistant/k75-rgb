@@ -1,41 +1,40 @@
-# K75 RGB — Reverse-Engineering Status (honest, 2026-09-24)
+# K75 RGB — Reverse-Engineering Status
 
-All findings now consolidated in [`docs/`](docs/) — start with the
-[index](docs/README.md), the [protocol reference](docs/protocol.md), and the
-[plan](docs/PLAN.md).
+Read the [protocol audit](docs/protocol-audit.md) before running an old probe.
 
-## Verified (live-tested, traceable)
+## Confirmed live
 
-1. **Color change + save** — report 0x09: cmd `0x0a` (write) + `0x0b` (apply)
-   + `0x06` (save). Persists across power-cycle and 2.4G wireless.
-   Tools: `setcolor2`, `save_color`.
-2. **Mode byte** — config `+0x0E` confirmed live 2026-09-24: 0x35 = static
-   rainbow, 0x45 = wave. (`cfgwrite` + `config-mode45-72.bin`.)
-3. **Complete report-0x09 command table** — 0x03/0x04/0x05 flash ops, 0x06
-   save, 0x08 direct-LED (6×RGB → 0x0379), 0x0a config write, 0x0b/0x0c/0x0d
-   apply. Full decode in [docs/protocol.md](docs/protocol.md).
-4. **Effect architecture decoded end-to-end** — 0x0F3F index → 0xDB76 code
-   table → 0x0F83 → handler chain; **no live-frame path** to mode/brightness/
-   effect registers (host route = config write). See
-   [docs/architecture.md](docs/architecture.md).
-5. **Recovery proven** — Fn+Esc (hold ~3s) factory reset; sinowisp ISP
-   reflash from MD5-verified backups.
+- Full-color payload via report-0x09 `0x0A` + `0x0B` changed the key colors.
+  After Fn+PgUp turned the key lights off, a red payload produced red keys
+  with a dim moving left-to-right red wave. This did **not** establish static
+  mode or independent per-key addressing.
+- `0x06` save persisted a color setting across power-cycle and wireless mode.
+  Save only after visually verifying the staged state.
+- Fn+Esc held for several seconds recovered the keyboard from earlier
+  lights-off incidents. Report-0x09 `0x04` caused a different, severe
+  lights-off state that known USB commands did not restore; **do not send it**.
 
-## In progress
+## Confirmed in firmware, not yet host-verified
 
-- **Speed + brightness offsets** — candidates built, next live session is
-  scripted ([docs/PLAN.md](docs/PLAN.md) Session 2).
-- **Side/case underglow** — cmd 0x08 direct-LED path decoded, untested live
-  (Session 3).
+- An internal `0x08` handler at `0x7108` writes 21×6 RGB entries to XDATA
+  `0x0379..0x04F2`. Its USB frame route, physical key indices, and any relation
+  to the side light remain unknown.
+- The internal `0x0A` handler at `0x9308` performs a two-page flash-buffer
+  transfer, not a positional per-key write. The host-to-internal staging path
+  needs further tracing before building a new packet.
+- Profile byte `+0x0E` feeds speed-related register `0x0CC8`; byte `+0x1F`
+  feeds mode register `0x0F54`. The earlier “0x35 static, 0x45 wave” claim
+  was invalidated by the factory default already being a wave.
 
-## Known limits
+## Open
 
-- **No host-visible config read** — cmd 0x04 is an internal reload (probed;
-  caused a lights-off incident when flash held a stale bad config). Driver
-  state must be tracked host-side.
+- Host route to the 21×6 RGB table and its physical key mapping.
+- Side/case light output path and an isolated command for it. A temporary
+  white/ice-blue observation was not attributable to a single packet.
+- Mode, speed, effect, and brightness control through a verified host path.
+  Short report-0x06 `'S'` writes staged data but did not apply it, so the
+  register sweep ruled nothing out.
 
-## Lessons (full details in [docs/recovery.md](docs/recovery.md))
-
-- cmd 0x04 is not a read — never fire it unattended.
-- Malformed config + save persists garbage; only Fn+Esc recovers.
-- Fn+Esc restores live state but does **not** rewrite data-flash.
+The old `setkey` and `sidelight` probes are disabled. The old test batch was
+retired in [docs/test-plan-2.md](docs/test-plan-2.md). The stock firmware
+backups and recovery rules are in [docs/recovery.md](docs/recovery.md).

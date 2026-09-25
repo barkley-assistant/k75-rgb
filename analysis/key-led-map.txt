@@ -1,7 +1,8 @@
 # RedThunder K75 (en-GB) LED matrix — extracted from official KB.ini [KEY] section
 # Format: LED_IDX <tab> KEY NAME
-# The cmd 0x0a payload is a positional RGB-triple stream: triple i = LED i.
-# setkey <LED_IDX> <R> <G> <B> lights that physical key.
+# Vendor LED IDs only; no host-packet positional mapping has been validated.
+# The former setkey probe is disabled because its zero-filled 0x0a payload
+# blanked the keys without lighting its selected ID. See docs/protocol-audit.md.
 # 82 entries: 81 keys + LED 95 (extra). Gaps = structural holes in the matrix.
 
 0	Esc

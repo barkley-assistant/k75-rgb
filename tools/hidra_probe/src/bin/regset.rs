@@ -3,9 +3,9 @@
 //! Usage: regset <REG> <v0> <v1> <v2> <v3>
 //!
 //! Frame (verified against fcn.00005001): [06, 0x53, 01, REG, b0..b3].
-//! REG selects the entry of the persistent register file; the value lands
-//! in the register block and is committed. READ-WRITE toward the device —
-//! values are config registers with 0x55 defaults.
+//! 'S' packets can stage without applying; this probe sends only a short
+//! frame. An ACK or no visible effect does not prove a register value changed.
+//! See docs/protocol-audit.md before interpreting results.
 use hidra::{Hidra, MaybeFuture, Nusb};
 use std::time::Duration;
 
@@ -52,9 +52,9 @@ async fn main() {
 
     let mut p = vec![0x06u8, 0x53, 0x01, reg];
     p.extend_from_slice(&vals);
-    println!("'S' SET reg={:02x} val={:02x?}", reg, vals);
+    println!("'S' short stage reg={:02x} val={:02x?}", reg, vals);
     match tokio::time::timeout(Duration::from_millis(2500), dev.send_feature_report(&p)).await {
-        Ok(Ok(())) => println!("-> OK. check the keyboard."),
+        Ok(Ok(())) => println!("-> transport OK; apply and live register change NOT verified"),
         Ok(Err(e)) => println!("-> ERR {:?}", e),
         Err(_) => println!("-> TIMEOUT"),
     }

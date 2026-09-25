@@ -31,7 +31,7 @@ Read this before probing the device.
 
 1. **cmd 0x04 is not a read.** It reloads data-flash into the live lighting
    state. Fired while flash held a stale bad config, it blanked all lights.
-   Fn+Esc recovered, but: never send cmd 0x04 unattended or "for fun".
+   Fn+Esc recovered, but: **never send report-0x09 cmd 0x04**.
 2. **Malformed config + save (0x06) persists garbage.** The wedge then
    survives replugs and Fn keys — only Fn+Esc fixes it. Only save a config
    image after it has been visually verified.
@@ -45,5 +45,6 @@ Read this before probing the device.
 - Config-write tests: one byte at a time, no save, Fn+Esc ready.
 - The 72-byte factory image (`analysis/config-default-72.bin`) is the
   known-good baseline — the control test is part of every session.
-- Direct-LED (cmd 0x08) writes are RAM-only (XDATA 0x0379 zone) — can't
-  wedge flash; power-cycle clears them.
+- Do not infer safety or host reachability from the internal `0x08` matrix
+  handler at `0x7108`. The former 18-byte `sidelight` probe is disabled; its
+  report-to-handler path and full data layout were never proven.

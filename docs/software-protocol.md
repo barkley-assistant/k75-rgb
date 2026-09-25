@@ -144,8 +144,9 @@ the firmware's per-key RGB table uses — 81 keys, indices 0..80).
    `GetLED` (0x44) can return the live 512-byte lighting state; `GetRealData`
    (0x88) reads raw data. Neither was reachable via our earlier probes.
 3. **Brightness/speed ladders are 5 steps** (0/5/10/15/20 and 0..4).
-4. **`Fixed_on` (HW 0x01)** is the static per-key mode — the state our M1
-   solid-color POC produced.
+4. **`Fixed_on` (HW 0x01)** is a name in the generic vendor effect catalog.
+   It has not been mapped to a working K75 host packet; the red key state
+   observed with our `0x0a`/`0x0b` sequence still had a dim moving wave.
 5. The 3-byte **password handshake** (`[0x81,0x05]` → `[0x01,b0,b1,b2]`)
    may gate firmware writes.
 ---

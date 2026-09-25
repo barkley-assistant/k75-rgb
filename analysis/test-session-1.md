@@ -12,10 +12,19 @@ Baseline: Fn+Esc factory reset (rainbow).
 Note: the corrected +0x1A speed images (mode45-speed05.bin / mode45-speed20.bin)
 were built but NOT yet sent live — they're the first tests of Session 2.
 
-## Confirmed
-- **+0x0E = mode byte** (VERIFIED live): 0x35 = static rainbow, 0x45 = wave.
-- Config write channel + apply works with correct images; no wedge risk with
-  factory-identical content.
+## Superseded interpretation
+
+The session-1 classification of `+0x0E` as a static-versus-wave mode byte
+was retracted after factory reset showed that the default already animates.
+See [test-session-2.md](test-session-2.md) and
+[docs/protocol-audit.md](../docs/protocol-audit.md). The observations below
+remain historical, but their old labels are not a packet specification.
+
+## Recorded observations
+- Historical misclassification: `+0x0E` was called a static-versus-wave
+  mode byte, but later evidence instead links it to speed-related `0x0CC8`.
+- A factory-identical config image is a useful baseline, but an ACK alone
+  does not prove it restored live state. Never save unverified data.
 
 ## Correction
 Earlier hypothesis said "0x63 speed candidate at +0x16" — WRONG (row

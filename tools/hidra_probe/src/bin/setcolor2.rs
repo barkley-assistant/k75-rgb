@@ -1,9 +1,7 @@
-//! Set whole keyboard to one solid color — SEQUENCE version.
-//! Fires a documented command sequence via report 0x09 and leaves the color held.
+//! Flood the existing report-0x09 payload with an RGB pattern and apply it.
+//! Observed to change key colors after Fn+PgUp; this does not establish
+//! static mode or independent per-key addressing. See docs/protocol-audit.md.
 //! Usage: setcolor2 <R> <G> <B>
-//! Sequence (each step traceable to disasm):
-//!   1. cmd 0x0a (fcn.00007108 per-key writer) with RGB filled
-//!   2. cmd 0x0b (0x7b40 direct apply -> fcn.000029cd -> PWM)
 use hidra::{Hidra, MaybeFuture, Nusb};
 use std::time::Duration;
 
@@ -45,7 +43,8 @@ async fn main() {
 
     println!("before: {:02x?}", get9(&dev).await);
 
-    // Step 1: per-key color write (cmd 0x0a) — fill every key with RGB
+    // Step 1: fill the 0x0a payload with RGB triples. The byte-level path
+    // to individual physical keys is not established.
     let mut frame = vec![0u8; 519];
     frame[0] = 0x0a;
     let mut i = 1;
@@ -59,5 +58,5 @@ async fn main() {
     println!("cmd 0x0b (apply) -> {}", send9(&dev, &apply).await);
 
     println!("after: {:02x?}", get9(&dev).await);
-    println!("DONE — check the keyboard (should be solid {}{}{})", args[0], args[1], args[2]);
+    println!("DONE — check the keyboard; a static effect is not guaranteed");
 }

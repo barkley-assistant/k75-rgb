@@ -21,9 +21,8 @@ All findings live in [`docs/`](docs/) — start with the
 
 - **M1 — color change** ✅ verified live (wired + 2.4G wireless)
 - **Persistence (save)** ✅ verified — survives power-cycle and wireless mode
-- **Mode control** ✅ `+0x0E` config byte confirmed (0x35 = rainbow, 0x45 = wave)
-- **Speed / brightness** 🔬 candidates built, live mapping in progress
-- **Side/case underglow** ⏳ cmd 0x08 direct-LED path decoded, untested live
+- **Mode/speed mapping** 🔬 `+0x0E` was misidentified as the mode byte; later disassembly maps it to speed-related register `0x0CC8`. `+0x1F` feeds mode register `0x0F54`. No static-mode control has been established.
+- **Per-key / side light** 🔬 a 21×6 RGB matrix writer exists internally, but the host packet path and physical key mapping are not yet proven. The side/case output remains unidentified; see [protocol audit](docs/protocol-audit.md).
 
 ## Running
 

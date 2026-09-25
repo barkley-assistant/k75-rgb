@@ -7,7 +7,8 @@ Reverse-engineering the proprietary RGB protocol of the RedThunder K75
 
 | Doc | What's in it |
 |---|---|
-| [protocol.md](protocol.md) | The **verified** USB protocol: reports, frames, command table, working sequences. Everything live-tested against the real board. |
+| [protocol-audit.md](protocol-audit.md) | **Current correction and test gate:** what the firmware and live tests actually establish; read before running probes. |
+| [protocol.md](protocol.md) | Working USB notes; older assumptions are corrected in the audit. |
 | [architecture.md](architecture.md) | Firmware internals: effect engine, registers, data-flash, per-key matrix. Instruction-level decode with addresses. |
 | [config-region.md](config-region.md) | The 72-byte config profile layout — what's confirmed, what's hypothesis, live test results. |
 | [recovery.md](recovery.md) | Safety net: Fn+Esc factory reset, ISP reflash, backups, hard rules. **Read before touching the device.** |
@@ -26,11 +27,12 @@ Reverse-engineering the proprietary RGB protocol of the RedThunder K75
 
 ## The 30-second version
 
-1. **Color + save already work.** `setcolor2` changes colors, `save_color`
-   persists them across power-cycles and wireless mode.
-2. **Mode control works.** Config byte `+0x0E` confirmed live (0x35 = static
-   rainbow, 0x45 = wave).
-3. **Still being mapped:** speed + brightness offsets in the config region,
-   and the side/case underglow zone (candidate: cmd 0x08 direct-LED path).
-4. **Recovery is proven:** Fn+Esc (hold ~3s) factory-resets lighting; full
-   ISP reflash from the firmware backup is the nuclear option.
+1. **Color + save were observed live.** Full-payload red changed the keys;
+   save persisted a color setting across a power-cycle and wireless mode.
+   The red keys still showed a moving wave, not a static effect.
+2. **The old mode claim was retracted.** `+0x0E` feeds `0x0CC8`
+   (speed-related), while `+0x1F` feeds mode register `0x0F54`.
+3. **Matrix control is not yet host-verified.** The internal `0x08` handler
+   writes 21×6 RGB slots; the side/case output is still unidentified.
+4. **Read [protocol-audit.md](protocol-audit.md)** before running a probe;
+   the old `setkey` and `sidelight` programs are disabled.
