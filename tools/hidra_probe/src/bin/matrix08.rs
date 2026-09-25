@@ -1,150 +1,207 @@
-//! Volatile, complete report-0x09 / command-0x08 matrix experiment.
+//! K75 lighting CLI — a thin, safe front-end over the `hidra_probe` library.
 //!
-//! Firmware path: 0x8906 -> 0x8765 -> 0x7253 -> 0xB0A8 -> 0x7A72 ->
-//! 0x7B35 -> 0x7108. This is not a physical key map. No save command is sent.
+//! Subcommands:
+//!
+//!   matrix baseline           build a uniform red frame (dry run)
+//!   matrix slot <0..125>      highlight one slot green against red (dry run)
+//!     --send                  actually send via USB
+//!     --repeat 1..20          resend at 500 ms (keeps keys lit; still transient)
+//!   effect <index>            register block `0x5A 0xAC <index>` (dry run)
+//!     --trace                 send the TRACED-ONLY effect-index write
+//!
+//! `--send`/`--trace` are the only paths that touch the device. Everything
+//! else is offline. The `effect` command is firmware-traced but NOT visually
+//! verified: sending it requires an observer and explicit `--trace`.
+
 use hidra::{Hidra, MaybeFuture, Nusb};
+use hidra_probe::{EffectIndexWrite, MatrixFrame, Rgb, INTERFACE, MATRIX_SLOTS, PID, VID};
 use std::error::Error;
 use std::time::Duration;
 
-const REPORT_LEN: usize = 520;
-const MATRIX_START: usize = 8;
-const MATRIX_SLOTS: usize = 21 * 6;
-const RED: [u8; 3] = [0xff, 0, 0];
-const GREEN: [u8; 3] = [0, 0xff, 0];
+#[derive(Debug)]
+enum Command {
+    Matrix {
+        highlight: Option<usize>,
+        send: bool,
+        repeat: usize,
+    },
+    Effect {
+        index: u8,
+        trace: bool,
+    },
+}
 
-fn frame(green_slot: Option<usize>) -> Result<[u8; REPORT_LEN], String> {
-    if let Some(slot) = green_slot {
-        if slot >= MATRIX_SLOTS {
-            return Err(format!("slot must be in 0..{}", MATRIX_SLOTS - 1));
+fn parse() -> Result<Command, String> {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    match args.as_slice() {
+        [sub, rest @ ..] if sub == "matrix" => parse_matrix(rest),
+        [sub, rest @ ..] if sub == "effect" => parse_effect(rest),
+        _ => Err(usage()),
+    }
+}
+
+fn parse_matrix(rest: &[String]) -> Result<Command, String> {
+    let mut highlight = None;
+    let mut send = false;
+    let mut repeat = 1usize;
+
+    let mut it = rest.iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "baseline" => highlight = None,
+            "slot" => {
+                let idx = it
+                    .next()
+                    .ok_or("slot requires an index")?
+                    .parse::<usize>()
+                    .map_err(|_| "slot index must be a number")?;
+                if idx >= MATRIX_SLOTS {
+                    return Err(format!("slot must be in 0..{}", MATRIX_SLOTS - 1));
+                }
+                highlight = Some(idx);
+            }
+            "--send" => send = true,
+            "--repeat" => {
+                repeat = it
+                    .next()
+                    .ok_or("--repeat requires a count")?
+                    .parse::<usize>()
+                    .map_err(|_| "repeat must be a number")?;
+                if !(1..=20).contains(&repeat) {
+                    return Err("repeat must be in 1..=20".into());
+                }
+            }
+            other => return Err(format!("unknown matrix argument: {other}")),
         }
     }
-    let mut report = [0u8; REPORT_LEN];
-    report[0] = 0x09;
-    report[1] = 0x08;
-    for slot in 0..MATRIX_SLOTS {
-        let start = MATRIX_START + slot * 3;
-        report[start..start + 3].copy_from_slice(if Some(slot) == green_slot {
-            &GREEN
-        } else {
-            &RED
-        });
+    Ok(Command::Matrix {
+        highlight,
+        send,
+        repeat,
+    })
+}
+
+fn parse_effect(rest: &[String]) -> Result<Command, String> {
+    let mut index = None;
+    let mut trace = false;
+    let mut it = rest.iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--trace" => trace = true,
+            other => {
+                let parsed = if let Some(hex) = other.strip_prefix("0x") {
+                    u8::from_str_radix(hex, 16)
+                } else {
+                    other.parse::<u8>()
+                };
+                index = Some(parsed.map_err(|_| format!("invalid effect index: {other}"))?);
+            }
+        }
     }
-    Ok(report)
+    let index = index.ok_or("effect requires an index (0..=0x13)")?;
+    Ok(Command::Effect { index, trace })
+}
+
+fn usage() -> String {
+    "\
+usage:
+  k75 matrix baseline [--send [--repeat 1..20]]
+  k75 matrix slot <0..125> [--send [--repeat 1..20]]
+  k75 effect <0..0x13> [--trace]
+"
+    .to_string()
+}
+
+fn open_device() -> Result<Hidra<Nusb>, String> {
+    let mut api = Hidra::<Nusb>::builder()
+        .build()
+        .map_err(|e| e.to_string())?;
+    api.refresh_devices().map_err(|e| e.to_string())?;
+    Ok(api)
 }
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let (green_slot, repeat) = match args.as_slice() {
-        [mode] if mode == "baseline" => (None, 1),
-        [mode, index] if mode == "slot" => (Some(index.parse::<usize>()?), 1),
-        [mode, flag] if mode == "baseline" && flag == "--send" => (None, 1),
-        [mode, index, flag] if mode == "slot" && flag == "--send" => {
-            (Some(index.parse::<usize>()?), 1)
-        }
-        [mode, flag, repeat_flag, count]
-            if mode == "baseline" && flag == "--send" && repeat_flag == "--repeat" =>
-        {
-            (None, count.parse::<usize>()?)
-        }
-        [mode, index, flag, repeat_flag, count]
-            if mode == "slot" && flag == "--send" && repeat_flag == "--repeat" =>
-        {
-            (Some(index.parse::<usize>()?), count.parse::<usize>()?)
-        }
-        _ => {
-            return Err("usage: matrix08 baseline|slot <0..125> [--send [--repeat 1..20]]".into());
-        }
-    };
-    if !(1..=20).contains(&repeat) {
-        return Err("repeat count must be in 1..=20".into());
+    let cmd = parse()?;
+    match cmd {
+        Command::Matrix {
+            highlight,
+            send,
+            repeat,
+        } => run_matrix(highlight, send, repeat).await?,
+        Command::Effect { index, trace } => run_effect(index, trace).await?,
     }
-    let send = args.iter().any(|arg| arg == "--send");
-    let report = frame(green_slot)?;
+    Ok(())
+}
+
+async fn run_matrix(
+    highlight: Option<usize>,
+    send: bool,
+    repeat: usize,
+) -> Result<(), Box<dyn Error>> {
+    let frame = MatrixFrame::new(Rgb::RED, highlight.map(|s| (s, Rgb::GREEN)))
+        .ok_or("invalid highlight slot")?;
+
+    println!("report 0x09 / command 0x08 matrix frame:");
     println!(
-        "report 0x09 / RAM matrix command 0x08; {} RGB slots, {} bytes; {}",
-        MATRIX_SLOTS,
-        report.len(),
-        if send {
-            "sending"
-        } else {
-            "dry run (no USB access)"
-        }
+        "  slots: {MATRIX_SLOTS} RGB (report offsets 8..385), {} bytes",
+        frame.as_bytes().len()
     );
-    if let Some(slot) = green_slot {
-        println!(
-            "green slot {slot} at report offsets {}..{}",
-            MATRIX_START + slot * 3,
-            MATRIX_START + slot * 3 + 2
-        );
+    if let Some(slot) = highlight {
+        println!("  highlight slot {slot} green against red baseline");
+    } else {
+        println!("  uniform red baseline");
     }
-    println!("first 32 bytes: {:02x?}", &report[..32]);
+    println!("  first 16 bytes: {:02x?}", &frame.as_bytes()[..16]);
+
     if !send {
+        println!("dry run (no USB access). add --send to write.");
         return Ok(());
     }
 
-    let mut api = Hidra::<Nusb>::builder().build()?;
-    api.refresh_devices()?;
+    let api = open_device()?;
     let path = api
         .device_list()
-        .find(|info| {
-            info.vendor_id() == 0x258a
-                && info.product_id() == 0x019d
-                && info.interface_number() == 1
+        .find(|i| {
+            i.vendor_id() == VID && i.product_id() == PID && i.interface_number() == INTERFACE
         })
         .ok_or("K75 interface 1 not found")?
         .path()
         .to_string();
     let dev = api.open_path(&path).wait()?;
-    for index in 0..repeat {
-        tokio::time::timeout(Duration::from_secs(3), dev.send_feature_report(&report)).await??;
-        println!(
-            "transport accepted frame {}/{}; visual effect still requires observation",
-            index + 1,
-            repeat
-        );
-        if index + 1 < repeat {
+
+    for n in 0..repeat {
+        tokio::time::timeout(
+            Duration::from_secs(3),
+            dev.send_feature_report(frame.as_bytes()),
+        )
+        .await??;
+        println!("frame {}/{} accepted by transport", n + 1, repeat);
+        if n + 1 < repeat {
             tokio::time::sleep(Duration::from_millis(500)).await;
         }
     }
-    let mut response = [0u8; REPORT_LEN];
-    response[0] = 0x09;
-    match tokio::time::timeout(
-        Duration::from_secs(3),
-        dev.get_feature_report(&mut response),
-    )
-    .await
-    {
-        Ok(Ok(n)) => println!("readback ({n} bytes): {:02x?}", &response[..n.min(16)]),
-        Ok(Err(err)) => eprintln!("readback failed: {err}"),
-        Err(_) => eprintln!("readback timed out"),
-    }
+    println!(
+        "note: this command is transient (~2 s per frame); repeat keeps keys lit while streaming."
+    );
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn complete_matrix_and_header() {
-        let report = frame(None).unwrap();
-        assert_eq!(&report[..8], &[0x09, 0x08, 0, 0, 0, 0, 0, 0]);
-        assert!(report[8..386].chunks_exact(3).all(|rgb| rgb == RED));
-        assert!(report[386..].iter().all(|byte| *byte == 0));
+async fn run_effect(index: u8, trace: bool) -> Result<(), Box<dyn Error>> {
+    let block = EffectIndexWrite { index }.to_block();
+    println!("effect-index register block (TRACED ONLY, not visually verified):");
+    println!("  block: {:02x?}", &block[..3]);
+    println!("  remaining 17 bytes zero-filled");
+    if !trace {
+        println!("dry run. sending this writes 0x0F3F (effect index); pass --trace to send.");
+        return Ok(());
     }
-
-    #[test]
-    fn a_slot_changes_only_its_triple() {
-        let baseline = frame(None).unwrap();
-        for slot in [0, 5, 6, 63, 125] {
-            let candidate = frame(Some(slot)).unwrap();
-            let differences: Vec<usize> = (0..REPORT_LEN)
-                .filter(|&i| candidate[i] != baseline[i])
-                .collect();
-            assert_eq!(differences, vec![8 + slot * 3, 9 + slot * 3]);
-            assert_eq!(&candidate[8 + slot * 3..11 + slot * 3], &GREEN);
-        }
-        assert!(frame(Some(MATRIX_SLOTS)).is_err());
-    }
+    // The register block is streamed via a byte-stream ingress (0x0EF6 ->
+    // 0x1130), NOT the 0x08 matrix report. The exact carrier report for this
+    // path is not yet pinned to a verified command, so this is intentionally
+    // conservative: it refuses to send until that carrier is proven.
+    return Err(
+        "effect-index register block ingress is traced but its carrier report is not yet pinned; refusing to send an unverified packet"
+            .into(),
+    );
 }

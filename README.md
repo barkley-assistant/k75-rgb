@@ -29,9 +29,27 @@ All findings live in [`docs/`](docs/) — start with the
 ```sh
 cd tools/hidra_probe
 cargo build --release --bin matrix08 --bin get09_readonly
-./target/release/matrix08 baseline                 # offline frame preview
-sudo ./target/release/get09_readonly               # read-only feature response
+
+# matrix frames (verified path)
+./target/release/matrix08 matrix baseline                 # offline preview
+./target/release/matrix08 matrix slot 63                  # offline preview
+sudo ./target/release/matrix08 matrix baseline --send     # send (transient)
+sudo ./target/release/matrix08 matrix slot 63 --send --repeat 16
+
+# traced-only effect-index register block (does NOT send; see below)
+./target/release/matrix08 effect 0x13
 ```
+
+The protocol core now lives in `src/lib.rs` — a `#![forbid(unsafe_code)]`
+library encoding the verified matrix-frame format and the traced effect-index
+register block, each gated behind explicit markers. The `matrix08` binary is a
+thin CLI over it:
+
+- `matrix baseline|slot <N>` builds a frame; `--send` writes it, `--repeat
+  1..20` resends at 500 ms (keeps keys lit, still transient ~2 s).
+- `effect <index>` prints the traced `0x5A 0xAC <index>` register block but
+  **refuses to send**: its carrier report is not yet pinned to a verified
+  command, so sending would risk a "plausible packet that does nothing".
 
 `matrix08 baseline --send` is a volatile test that writes the complete red
 matrix and does **not** save it. `matrix08 slot 63 --send` changed only the

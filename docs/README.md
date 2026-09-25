@@ -10,6 +10,8 @@ Reverse-engineering the proprietary RGB protocol of the RedThunder K75
 | [protocol-audit.md](protocol-audit.md) | **Current correction and test gate:** what the firmware and live tests actually establish; read before running probes. |
 | [protocol.md](protocol.md) | Working USB notes; older assumptions are corrected in the audit. |
 | [architecture.md](architecture.md) | Firmware internals: effect engine, registers, data-flash, per-key matrix. Instruction-level decode with addresses. |
+| [rendering-architecture.md](rendering-architecture.md) | Transient-vs-persistent rendering, the `0x0F59` countdown, and the traced `0x0F83=0x13` persistence path + register-block ingress. |
+| [key-map.md](key-map.md) | Vendor LED index (`col×6+row`) vs the 21×6 firmware matrix; verified slot pins and the remaining mapping plan. |
 | [config-region.md](config-region.md) | The 72-byte config profile layout — what's confirmed, what's hypothesis, live test results. |
 | [recovery.md](recovery.md) | Safety net: Fn+Esc factory reset, ISP reflash, backups, hard rules. **Read before touching the device.** |
 | [PLAN.md](PLAN.md) | What's left, broken down into concrete steps with acceptance criteria. |
