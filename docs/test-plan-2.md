@@ -10,14 +10,17 @@ keyboard shows, we log it, next test. Recovery hatch at any time: `Fn+Esc` hold
 
 ## 0. Baseline & incident note
 
-Two read-only probes (`rv`, `readcfg`) were run against the device on 2026-09-25.
-`readcfg` sends **cmd 0x04 = config reload** — this re-applies the SAVED flash
-config, and it visibly **changed the side/case light color** and briefly knocked
-the lighting out. Two takeaways:
+**cmd 0x04 (config reload) is FORBIDDEN for the final tool.** Live-verified
+2026-09-25: it drops the master lighting flag (bit 0x26.2), zeroes brightness
+(0x0F64) and the per-key override registers (0x0F84/0x0F85), then dispatches on
+0x0BBF (side-zone flag). The resulting lights-off state is **not restorable over
+USB** — verified against 0x0a/0x0b/0x0c/0x0d, mode commands (0x25/0x35/0x45/0x55),
+and full config writes (mode-0x35 image). Only Fn+Esc (factory init: fcn.0x9c42 +
+flash commit 0xd31d) restores it. The final daemon has no use for cmd 0x04 —
+config write (0x0a+0x0b) and save (0x06) are the verified channels.
 
-1. **The side light IS config-driven.** It is in the 72-byte config image.
-2. The config reload is a real apply mechanism — `cfgwrite` + a reload applies
-   config without the save cycle.
+Side effect worth keeping: the incident proved the **side light is
+config-driven** — the reload visibly changed its color before going dark.
 
 Prime suspect for the side zone: config byte **+0x0F → register 0x0BBF** — the
 only config→register path we had not characterized. Firmware dispatches on its
