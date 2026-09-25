@@ -61,6 +61,12 @@ Read the [protocol audit](docs/protocol-audit.md) before running an old probe.
 - Mode, speed, effect, and brightness control through a verified host path.
   Short report-0x06 `'S'` writes staged data but did not apply it, so the
   register sweep ruled nothing out.
+- A second command channel exists on the USB control endpoint, dispatched by
+  wValue high (`0x114A`): `0x01`/`0x02` write `"AH"`/`"AZ"` magic to
+  `0x0FA3:0x0FA4` and walk the `0x05F4` effect table via `0x906D`. This is the
+  likely carrier for effect selection but is complex table-walk plumbing, not
+  a clean "set effect N" command. Traced offline, not verified live. See
+  [protocol-audit.md](docs/protocol-audit.md).
 
 The old `setkey` and `sidelight` probes are disabled. The old test batch was
 retired in [docs/test-plan-2.md](docs/test-plan-2.md). The stock firmware

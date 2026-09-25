@@ -33,6 +33,29 @@ The case light is **not** the 126-slot key matrix. It is a self-contained effect
 
 To change the case light, write profile byte `+0x0F` (feeds `0x0BBF`) through the config path (`0x0A` + `0x0B`), **not** through the key-matrix `0x08` command. This `0x0BBF → case colour` link is a firmware hypothesis and has **not** been tested live.
 
+## Second command channel (control transfers)
+
+A second, independent host path exists on the USB control endpoint, dispatched by
+wValue rather than by a feature-report command byte. The SETUP handler at
+`0x14A9` reads XDATA `0x114A` (wValue **high**) and branches:
+
+- `0x114A == 0x01` → writes magic `0x0FA3:0x0FA4 = "AH"`, reads a length from
+  `0x0F6C`, stages a pointer into `0x1151..0x1153`, `ljmp 0x17FF`.
+- `0x114A == 0x02` → writes magic `"AZ"`, reads `0x0F6D:0x0F6E`, stages into
+  `0x1151..`, continues.
+
+`0x17FF` stores the staged 16-bit pointer in `0x1151:0x1152` and `lcall 0x906D`,
+which walks the **`0x05F4`-based effect table** (0x24-byte records) doing
+pointer arithmetic, using `0x1150` as a status/state register and treating the
+`0x0FA3:0x0FA4` magic bytes as a running 16-bit pointer. `wLength` is
+`0x114D:0x114E`.
+
+This control-transfer channel is the **likely carrier for effect selection**
+(the `0x0F3F`/`0x0F83` persistence path), but it is complex effect-table-walk
+plumbing, not a single clean "set effect N" command. It is traced offline and
+**not** verified live. It does not supersede the feature-report `0x08` matrix
+path — the two are distinct.
+
 ## Visual evidence and outstanding tests
 
 - A full-red `0x0A` payload followed by `0x0B` previously made the keys red after Fn+PgUp, with a dim left-to-right **red wave**. That is not proof of static mode or individual keys.
