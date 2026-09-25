@@ -67,7 +67,8 @@ async fn main() {
     }
     let mut path = String::new();
     for info in api.device_list() {
-        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1 {
+        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1
+        {
             path = info.path().to_string();
             break;
         }
@@ -92,7 +93,12 @@ async fn main() {
         p[2] = 0x01; //    first-packet marker
         p[3] = 0x00; //    REG (config block staging)
         p[4..4 + blk.len()].copy_from_slice(blk);
-        match tokio::time::timeout(Duration::from_millis(TIMEOUT_MS), dev.send_feature_report(&p)).await {
+        match tokio::time::timeout(
+            Duration::from_millis(TIMEOUT_MS),
+            dev.send_feature_report(&p),
+        )
+        .await
+        {
             Ok(Ok(())) => "ACK".to_string(),
             Ok(Err(e)) => format!("ERR {:?}", e),
             Err(_) => "TIMEOUT".to_string(),
@@ -142,7 +148,12 @@ async fn main() {
         p[3] = 0x00; // REG
         p[4] = val;
         println!("mode {}: staging 0x0F22 = 0x{:02x}", n, val);
-        match tokio::time::timeout(Duration::from_millis(TIMEOUT_MS), dev.send_feature_report(&p)).await {
+        match tokio::time::timeout(
+            Duration::from_millis(TIMEOUT_MS),
+            dev.send_feature_report(&p),
+        )
+        .await
+        {
             Ok(Ok(())) => println!("  -> ACK"),
             Ok(Err(e)) => println!("  -> ERR {:?}", e),
             Err(_) => println!("  -> TIMEOUT"),
@@ -155,7 +166,10 @@ async fn main() {
     let f5: u8 = if args.len() > 1 { hex(&args[1]) } else { 1 };
     let f3: u8 = if args.len() > 2 { hex(&args[2]) } else { 1 };
     let blk = build_effect_block(op, f5, f3);
-    println!("op 0x{:02x} flags (r5={} r3={}): block={:02x?}", op, f5, f3, blk);
+    println!(
+        "op 0x{:02x} flags (r5={} r3={}): block={:02x?}",
+        op, f5, f3, blk
+    );
     let r = send_block(&dev, &blk).await;
     println!("  -> {}", r);
     std::io::stdout().flush().ok();

@@ -32,7 +32,8 @@ async fn main() {
     }
     let mut path = String::new();
     for info in api.device_list() {
-        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1 {
+        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1
+        {
             path = info.path().to_string();
             break;
         }
@@ -62,7 +63,12 @@ async fn main() {
         Err(_) => println!("password send TIMEOUT"),
     }
     let mut pwresp = vec![0u8; 8];
-    match tokio::time::timeout(Duration::from_millis(2500), dev.get_feature_report(&mut pwresp)).await {
+    match tokio::time::timeout(
+        Duration::from_millis(2500),
+        dev.get_feature_report(&mut pwresp),
+    )
+    .await
+    {
         Ok(Ok(n)) => println!("password response: {:02x?}", &pwresp[..n]),
         Ok(Err(e)) => println!("password get ERR: {:?}", e),
         Err(_) => println!("password get TIMEOUT"),
@@ -103,7 +109,12 @@ async fn main() {
     }
 
     let mut resp = vec![0u8; 520];
-    match tokio::time::timeout(Duration::from_millis(2500), dev.get_feature_report(&mut resp)).await {
+    match tokio::time::timeout(
+        Duration::from_millis(2500),
+        dev.get_feature_report(&mut resp),
+    )
+    .await
+    {
         Ok(Ok(_n)) => {
             println!("response: {} bytes", resp.len());
             println!("rid={:02x} chk={:02x} cmd={:02x} sub={:02x} pages={:02x} idx={:02x} len={:02x}{:02x}",

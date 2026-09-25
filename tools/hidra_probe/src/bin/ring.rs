@@ -24,17 +24,35 @@ async fn set9(dev: &hidra::HidDevice<hidra::NusbDevice>, data: Vec<u8>) -> Strin
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     let mut api = match Hidra::<Nusb>::builder().build() {
-        Ok(a) => a, Err(e) => { eprintln!("init ERR: {:?}", e); return; }
+        Ok(a) => a,
+        Err(e) => {
+            eprintln!("init ERR: {:?}", e);
+            return;
+        }
     };
-    if let Err(e) = api.refresh_devices() { eprintln!("refresh ERR: {:?}", e); return; }
+    if let Err(e) = api.refresh_devices() {
+        eprintln!("refresh ERR: {:?}", e);
+        return;
+    }
     let mut path = String::new();
     for info in api.device_list() {
-        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1 {
-            path = info.path().to_string(); break;
+        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1
+        {
+            path = info.path().to_string();
+            break;
         }
     }
-    if path.is_empty() { eprintln!("device not found"); return; }
-    let dev = match api.open_path(&path).wait() { Ok(d) => d, Err(e) => { eprintln!("open ERR: {:?}", e); return; } };
+    if path.is_empty() {
+        eprintln!("device not found");
+        return;
+    }
+    let dev = match api.open_path(&path).wait() {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("open ERR: {:?}", e);
+            return;
+        }
+    };
 
     println!("BEFORE GET 0x09: {:02x?}", get9(&dev).await);
 

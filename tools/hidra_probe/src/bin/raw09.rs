@@ -30,7 +30,8 @@ async fn main() {
     }
     let mut path = String::new();
     for info in api.device_list() {
-        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1 {
+        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1
+        {
             path = info.path().to_string();
             break;
         }
@@ -51,9 +52,13 @@ async fn main() {
     frame[0] = cmd;
     let mut p = vec![0x09u8];
     p.extend_from_slice(&frame);
-    println!("raw09 cmd {:02x} -> {}", cmd, match tokio::time::timeout(Duration::from_millis(2500), dev.send_feature_report(&p)).await {
-        Ok(Ok(())) => "ACK".to_string(),
-        Ok(Err(e)) => format!("ERR {:?}", e),
-        Err(_) => "TIMEOUT".to_string(),
-    });
+    println!(
+        "raw09 cmd {:02x} -> {}",
+        cmd,
+        match tokio::time::timeout(Duration::from_millis(2500), dev.send_feature_report(&p)).await {
+            Ok(Ok(())) => "ACK".to_string(),
+            Ok(Err(e)) => format!("ERR {:?}", e),
+            Err(_) => "TIMEOUT".to_string(),
+        }
+    );
 }

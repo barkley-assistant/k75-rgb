@@ -26,9 +26,7 @@ fn checksum(block: &[u8]) -> u8 {
 fn open_dev(api: &Hidra<Nusb>) -> hidra::HidDevice<hidra::NusbDevice> {
     let mut path = String::new();
     for info in api.device_list() {
-        if info.vendor_id() == 0x258a
-            && info.product_id() == 0x019d
-            && info.interface_number() == 1
+        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1
         {
             path = info.path().to_string();
             break;
@@ -51,12 +49,7 @@ async fn hold(tick: usize) {
 async fn send9(dev: &hidra::HidDevice<hidra::NusbDevice>, data: &[u8]) -> String {
     let mut p = vec![0x09u8];
     p.extend_from_slice(data);
-    match tokio::time::timeout(
-        Duration::from_millis(2000),
-        dev.send_feature_report(&p),
-    )
-    .await
-    {
+    match tokio::time::timeout(Duration::from_millis(2000), dev.send_feature_report(&p)).await {
         Ok(Ok(())) => "ACK".to_string(),
         Ok(Err(e)) => format!("ERR {:?}", e),
         Err(_) => "TIMEOUT".to_string(),
@@ -70,12 +63,7 @@ async fn send6(dev: &hidra::HidDevice<hidra::NusbDevice>, blk: &[u8], reg: u8) -
     p[2] = 0x01;
     p[3] = reg;
     p[4..4 + blk.len()].copy_from_slice(blk);
-    match tokio::time::timeout(
-        Duration::from_millis(2000),
-        dev.send_feature_report(&p),
-    )
-    .await
-    {
+    match tokio::time::timeout(Duration::from_millis(2000), dev.send_feature_report(&p)).await {
         Ok(Ok(())) => "ACK".to_string(),
         Ok(Err(e)) => format!("ERR {:?}", e),
         Err(_) => "TIMEOUT".to_string(),
@@ -194,7 +182,10 @@ async fn main() {
             let r = hex(args.get(1).map(|s| s.as_str()).unwrap_or("ff"));
             let g = hex(args.get(2).map(|s| s.as_str()).unwrap_or("00"));
             let b = hex(args.get(3).map(|s| s.as_str()).unwrap_or("00"));
-            println!("REPEATING colour ff{:02x}{:02x} (control, known-good path)", g, b);
+            println!(
+                "REPEATING colour ff{:02x}{:02x} (control, known-good path)",
+                g, b
+            );
             println!("QUESTION: does the keyboard turn red? (y/n)");
             let mut tick = 0usize;
             loop {

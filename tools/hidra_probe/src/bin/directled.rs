@@ -29,12 +29,19 @@ async fn main() {
     frame[6] = (len & 0xff) as u8;
     frame[7] = (len >> 8) as u8;
     for k in 0..KEYS {
-        let (r, g, b) = if k < KEYS / 2 { (0xff, 0x00, 0x00) } else { (0x00, 0x00, 0xff) };
+        let (r, g, b) = if k < KEYS / 2 {
+            (0xff, 0x00, 0x00)
+        } else {
+            (0x00, 0x00, 0xff)
+        };
         frame[8 + k * 3] = r;
         frame[8 + k * 3 + 1] = g;
         frame[8 + k * 3 + 2] = b;
     }
-    eprintln!("direct-LED frame: cmd 0x08, {} keys, len 0x{:04x}", KEYS, len);
+    eprintln!(
+        "direct-LED frame: cmd 0x08, {} keys, len 0x{:04x}",
+        KEYS, len
+    );
     match tokio::time::timeout(Duration::from_millis(1500), dev.send_feature_report(&frame)).await {
         Ok(Ok(())) => eprintln!("ACK — check keyboard: left half red / right half blue"),
         other => eprintln!("SET ERR: {:?}", other),

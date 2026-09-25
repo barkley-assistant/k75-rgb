@@ -24,19 +24,42 @@ async fn send(dev: &hidra::HidDevice<hidra::NusbDevice>, p: &[u8]) -> String {
 async fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let hex = |s: &str| u8::from_str_radix(s.trim_start_matches("0x"), 16).unwrap_or(0);
-    if args.is_empty() { eprintln!("usage: sblock <hex bytes...>"); return; }
+    if args.is_empty() {
+        eprintln!("usage: sblock <hex bytes...>");
+        return;
+    }
     let bytes: Vec<u8> = args.iter().map(|s| hex(s)).collect();
 
-    let mut api = match Hidra::<Nusb>::builder().build() { Ok(a)=>a, Err(e)=>{eprintln!("init {:?}",e);return;} };
-    if let Err(e)=api.refresh_devices() { eprintln!("refresh {:?}",e);return; }
-    let mut path=String::new();
+    let mut api = match Hidra::<Nusb>::builder().build() {
+        Ok(a) => a,
+        Err(e) => {
+            eprintln!("init {:?}", e);
+            return;
+        }
+    };
+    if let Err(e) = api.refresh_devices() {
+        eprintln!("refresh {:?}", e);
+        return;
+    }
+    let mut path = String::new();
     for info in api.device_list() {
-        if info.vendor_id()==0x258a && info.product_id()==0x019d && info.interface_number()==1 {
-            path=info.path().to_string(); break;
+        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1
+        {
+            path = info.path().to_string();
+            break;
         }
     }
-    if path.is_empty() { eprintln!("device not found"); return; }
-    let dev = match api.open_path(&path).wait() { Ok(d)=>d, Err(e)=>{eprintln!("open {:?}",e);return;} };
+    if path.is_empty() {
+        eprintln!("device not found");
+        return;
+    }
+    let dev = match api.open_path(&path).wait() {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("open {:?}", e);
+            return;
+        }
+    };
 
     println!("block ({} bytes): {:02x?}", bytes.len(), bytes);
 
@@ -53,7 +76,9 @@ async fn main() {
         let mut cp = vec![0x06u8, 0x53, 0x01, 0x00];
         let end = (off + 8).min(bytes.len());
         let mut chunk = bytes[off..end].to_vec();
-        while chunk.len() < 8 { chunk.push(0x00); }
+        while chunk.len() < 8 {
+            chunk.push(0x00);
+        }
         cp.extend_from_slice(&chunk);
         println!("  cont ({}+8): {}", off, send(&dev, &cp).await);
         tokio::time::sleep(Duration::from_millis(100)).await;

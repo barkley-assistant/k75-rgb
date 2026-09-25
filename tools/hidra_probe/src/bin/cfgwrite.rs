@@ -51,7 +51,8 @@ async fn main() {
     }
     let mut path = String::new();
     for info in api.device_list() {
-        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1 {
+        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1
+        {
             path = info.path().to_string();
             break;
         }
@@ -74,7 +75,11 @@ async fn main() {
     frame[0] = 0x0a;
     let n = image.len().min(518);
     frame[1..1 + n].copy_from_slice(&image[..n]);
-    println!("cmd 0x0a (config write, {} bytes) -> {}", n, send9(&dev, &frame).await);
+    println!(
+        "cmd 0x0a (config write, {} bytes) -> {}",
+        n,
+        send9(&dev, &frame).await
+    );
     tokio::time::sleep(Duration::from_millis(150)).await;
 
     // cmd 0x0b: apply

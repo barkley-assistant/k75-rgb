@@ -18,18 +18,33 @@ async fn main() {
         std::process::exit(1);
     }
 
-    let payload: Vec<u8> = hex_args.iter().map(|s| u8::from_str_radix(s.trim_start_matches("0x"), 16).unwrap_or(0)).collect();
-    eprintln!("payload: {:02x?} ({} bytes) output={}", payload, payload.len(), use_output);
+    let payload: Vec<u8> = hex_args
+        .iter()
+        .map(|s| u8::from_str_radix(s.trim_start_matches("0x"), 16).unwrap_or(0))
+        .collect();
+    eprintln!(
+        "payload: {:02x?} ({} bytes) output={}",
+        payload,
+        payload.len(),
+        use_output
+    );
 
     let mut api = match Hidra::<Nusb>::builder().build() {
         Ok(a) => a,
-        Err(e) => { eprintln!("init ERR: {:?}", e); return; }
+        Err(e) => {
+            eprintln!("init ERR: {:?}", e);
+            return;
+        }
     };
-    if let Err(e) = api.refresh_devices() { eprintln!("refresh ERR: {:?}", e); return; }
+    if let Err(e) = api.refresh_devices() {
+        eprintln!("refresh ERR: {:?}", e);
+        return;
+    }
 
     let mut path = String::new();
     for info in api.device_list() {
-        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1 {
+        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1
+        {
             path = info.path().to_string();
             break;
         }
@@ -43,11 +58,17 @@ async fn main() {
             }
         }
     }
-    if path.is_empty() { eprintln!("device not found"); return; }
+    if path.is_empty() {
+        eprintln!("device not found");
+        return;
+    }
 
     let dev = match api.open_path(&path).wait() {
         Ok(d) => d,
-        Err(e) => { eprintln!("open ERR: {:?}", e); return; }
+        Err(e) => {
+            eprintln!("open ERR: {:?}", e);
+            return;
+        }
     };
     eprintln!("opened: {}", path);
 
@@ -60,7 +81,8 @@ async fn main() {
         }
     } else {
         eprintln!("sending SET_FEATURE...");
-        match tokio::time::timeout(Duration::from_secs(5), dev.send_feature_report(&payload)).await {
+        match tokio::time::timeout(Duration::from_secs(5), dev.send_feature_report(&payload)).await
+        {
             Ok(Ok(())) => eprintln!("ACCEPTED"),
             Ok(Err(e)) => eprintln!("ERR: {:?}", e),
             Err(_) => eprintln!("TIMEOUT"),

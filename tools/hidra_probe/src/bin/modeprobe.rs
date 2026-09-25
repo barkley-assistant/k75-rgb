@@ -55,7 +55,8 @@ async fn main() {
         mode, speed, bright, mode_off
     );
 
-    let send = tokio::time::timeout(Duration::from_millis(1500), dev.send_feature_report(&frame)).await;
+    let send =
+        tokio::time::timeout(Duration::from_millis(1500), dev.send_feature_report(&frame)).await;
     match send {
         Ok(Ok(())) => {}
         other => {
@@ -68,6 +69,7 @@ async fn main() {
     let mut apply = vec![0u8; 520];
     apply[0] = 0x09;
     apply[1] = 0x0b;
-    let _ = tokio::time::timeout(Duration::from_millis(1500), dev.send_feature_report(&apply)).await;
+    let _ =
+        tokio::time::timeout(Duration::from_millis(1500), dev.send_feature_report(&apply)).await;
     eprintln!("DONE — check keyboard");
 }

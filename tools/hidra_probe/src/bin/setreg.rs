@@ -19,21 +19,42 @@ async fn get6(dev: &hidra::HidDevice<hidra::NusbDevice>) -> Vec<u8> {
 async fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let hex = |s: &str| u8::from_str_radix(s.trim_start_matches("0x"), 16).unwrap_or(0);
-    if args.is_empty() { eprintln!("usage: setreg <reg> <b0..b3> [more...]"); return; }
+    if args.is_empty() {
+        eprintln!("usage: setreg <reg> <b0..b3> [more...]");
+        return;
+    }
     let vals: Vec<u8> = args.iter().map(|s| hex(s)).collect();
 
     let mut api = match Hidra::<Nusb>::builder().build() {
-        Ok(a) => a, Err(e) => { eprintln!("init ERR: {:?}", e); return; }
+        Ok(a) => a,
+        Err(e) => {
+            eprintln!("init ERR: {:?}", e);
+            return;
+        }
     };
-    if let Err(e) = api.refresh_devices() { eprintln!("refresh ERR: {:?}", e); return; }
+    if let Err(e) = api.refresh_devices() {
+        eprintln!("refresh ERR: {:?}", e);
+        return;
+    }
     let mut path = String::new();
     for info in api.device_list() {
-        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1 {
-            path = info.path().to_string(); break;
+        if info.vendor_id() == 0x258a && info.product_id() == 0x019d && info.interface_number() == 1
+        {
+            path = info.path().to_string();
+            break;
         }
     }
-    if path.is_empty() { eprintln!("device not found"); return; }
-    let dev = match api.open_path(&path).wait() { Ok(d) => d, Err(e) => { eprintln!("open ERR: {:?}", e); return; } };
+    if path.is_empty() {
+        eprintln!("device not found");
+        return;
+    }
+    let dev = match api.open_path(&path).wait() {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("open ERR: {:?}", e);
+            return;
+        }
+    };
 
     println!("BEFORE GET 0x06: {:02x?}", get6(&dev).await);
 
