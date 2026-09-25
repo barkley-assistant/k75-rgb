@@ -22,6 +22,17 @@ The report generator is `tools/hidra_probe/src/bin/matrix08.rs`. It defaults to 
 
 `python3 analysis/verify_matrix_path.py` checks instruction signatures and the address arithmetic offline. It cannot establish live transport, renderer conditions, physical key positions, or case-light routing.
 
+## Case/side light (separate animation generator)
+
+The case light is **not** the 126-slot key matrix. It is a self-contained effect engine on its own XDATA registers `0x0F99..0x0F9F`:
+
+- `0x0F99` = case colour index into CODE palette `0xB459`/`0xB463`; `0x0F9B` = effect sub-state; `0x0F9D` = step/direction counter; `0x0F9E` = current case colour byte; `0x0F9F` = palette index into `0xB46D`.
+- The case effect loop is `0x0B66–0x0E70`. The case renderer at `0x4D80` copies `0x0F99/0x0F9A/0x0F9C/0x0F9F` into a `0x0DBF..0x0DC3` staging block and `0x0BBF` into `0x0DD9`, then serialises out via `lcall 0xda4f` (the LED transmit) from base `0x0DB2`.
+- Every writer of `0x0F99..0x0F9F` is the firmware effect loop (`0xB66–0xE70`), init (`0x3701–0x3835`), `0x4931`, or the `0x6245/0x6233` region — **none** in the report-0x09 or config-write handler ranges (`0x72xx–0x93xx`). There is **no live-USB-frame path into the case colour**.
+- The only host-reachable lever is `0x0BBF`, seeded by the config-load path `0x7F15` from CODE `0xA427` (profile byte `+0x0F`). The case light is therefore **config/profile-driven**, which explains why a config *reload* (forbidden `0x04`) visibly changed it to white/ice-blue while the `0x08` key tests left it rainbow.
+
+To change the case light, write profile byte `+0x0F` (feeds `0x0BBF`) through the config path (`0x0A` + `0x0B`), **not** through the key-matrix `0x08` command. This `0x0BBF → case colour` link is a firmware hypothesis and has **not** been tested live.
+
 ## Visual evidence and outstanding tests
 
 - A full-red `0x0A` payload followed by `0x0B` previously made the keys red after Fn+PgUp, with a dim left-to-right **red wave**. That is not proof of static mode or individual keys.

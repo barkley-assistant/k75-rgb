@@ -47,7 +47,11 @@ Read the [protocol audit](docs/protocol-audit.md) before running an old probe.
   host refresh policy; sending one frame does not persist the effect.
 - Side/case light output path and an isolated command for it. A temporary
   white/ice-blue observation was not attributable to a single packet; the
-  matrix tests left the case rainbow.
+  matrix tests left the case rainbow. **Firmware trace now shows the case
+  light is a separate animation generator on `0x0F99..0x0F9F` with no
+  live-USB-frame writer — it is config/profile-driven via `0x0BBF`
+  (profile `+0x0F`).** See the case-light section in
+  [protocol-audit.md](docs/protocol-audit.md). Untested live.
 - Mode, speed, effect, and brightness control through a verified host path.
   Short report-0x06 `'S'` writes staged data but did not apply it, so the
   register sweep ruled nothing out.
