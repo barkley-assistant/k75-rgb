@@ -94,6 +94,22 @@ So the register block is a **20-byte raw block beginning `0x5A 0xAC <idx>
 `0x0F54 = 0x01` first is still to be pinned to a specific report ID — it is
 the mode/effect-setting command, not `0x08`.
 
+### Effect-code map (from the Fn+Tab cycle handler, `0x368A`)
+
+The firmware's own effect switch (what Fn+Tab drives) confirms **`0x0F83` is
+the effect code**, range `0x00..0x13` (20 values). Fn+Tab forward (`0x36A0`)
+increments it, skipping `0x06`, `0x0E`, `0x12`, wrapping `0x13 → 0x00`;
+reverse (`0x0BBC == 2`, `0x36CB`) decrements with matching skips. That is
+**17 real effects** (20 minus 3 skipped). Effect `0x13` is the terminal
+custom/static-matrix effect that renders `0x0379` continuously — the
+persistence target. `0x0F87` is the solid-colour **colour index** (0..0x13,
+wraps at 0x14); `0x0F9B`/`0x0F9F` are the case-light effect/colour state,
+also touched by the Fn keys.
+
+Note: `0x0F3F` (the register-block target) is a **separate** register from
+`0x0F83`. The exact `0x0F3F → 0x0F83` translation remains unproven and is the
+one link still needing a live test.
+
 ### Remaining unproven link
 
 The exact `0x0F3F -> 0x0F83` mapping (which effect index selects code `0x13`)
