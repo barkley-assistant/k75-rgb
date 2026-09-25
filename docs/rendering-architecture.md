@@ -58,6 +58,27 @@ Therefore a persistent custom-colour display requires, in firmware terms:
 2. `0x0F83 = 0x13` (select the custom/static effect);
 3. `0x0C4D = 0x69` (arm the custom-matrix flag).
 
+## Host-reachable register write (the persistence lever)
+
+The report-0x09 engine can reach a register-write path via the `0x1130`
+command block, consumed by `fcn.0000BBCD` (`0xBBCD`). It dispatches on a
+command byte in the block:
+
+- command `0xAC` → reads the next block byte and writes it to **`0x0F3F`**
+  (the effect index), sets `0x2A.4`. (`0xBBDB..0xBBF2`)
+- command `0xAA` → writes the next byte to `0x1155`. (`0xBBE0..0xBBE6`)
+
+The block shape is `[0x5A, <cmd>, <value>, ...]` (magic `0x5A` first). This is
+the **only traced host-reachable write into the effect system**: `0x0F3F`
+(effect index) feeds the effect-code computation that ends at `0x0F83`, whose
+value `0x13` selects the custom/static matrix renderer `0x2dac`.
+
+The remaining unproven link is the exact `0x0F3F -> 0x0F83` mapping (which
+effect index selects code `0x13`) and whether setting it also arms `0x0C4D
+= 0x69`. This is the highest-value next live test, and it is **RAM-only and
+reversible** (no save, no reload), so it is safe to probe once per baseline
+under the existing rules.
+
 ## What is NOT yet proven
 
 - No host-reachable write into `0x0F83` or `0x0C4D` has been traced. The
