@@ -6,16 +6,23 @@ the source of truth. The earlier live-test plan is [retired](test-plan-2.md).
 1. **Map the remaining keys.** The report-0x09 ingress and command `0x08`
    matrix byte offsets are firmware-traced; a complete red frame visibly lit
    the keys. Slot 63 isolated the UK `;` key and slot 0 isolated Esc, agreeing
-   with the vendor LED IDs at those two positions. Use the same full baseline
-   and one changed slot per visual observation; do not extrapolate every UK
-   ISO position from two checks.
-2. **Characterize transient rendering.** The `0x0F59=0xFA` countdown and a
-   bounded host refresh were observed to keep the keys lit during streaming,
-   then let them turn off after it stopped. Determine whether a safely
-   reachable static/persistent mode exists before relying on continual refresh.
+   with the vendor LED IDs at those two positions. See [key-map.md](key-map.md):
+   the vendor LED index is `col×6 + row` over a 16×6 physical grid, while the
+   firmware matrix is 21×6 (126 slots), so 30 slots are non-key (dead or the
+   case-light chain). Host slot = vendor LED index is the leading hypothesis,
+   confirmed only at 0 and 63. Complete it with one green slot per observation
+   against a red baseline.
+2. **Characterize transient rendering.** The `0x0F59=0xFA` countdown is now
+   fully explained — see [rendering-architecture.md](rendering-architecture.md).
+   Persistent colour requires effect `0x0F83=0x13` (custom/static matrix) +
+   `0x0C4D=0x69`; the remaining blocker is finding a host-reachable write into
+   `0x0F83`/`0x0C4D` (candidates: config path `profile +0x1F -> 0x0F54`, or the
+   `0x1130` register block `[0x5A, 0xAC, <index>] -> 0x0F3F`). Bounded streaming
+   is the proven fallback.
 3. **Trace the case output separately.** It stayed rainbow through all of
-   the `0x08` key-matrix tests. Find its actual driver, state, and host-reachable
-   writer; an earlier white/ice-blue observation does not identify a command.
+   the `0x08` key-matrix tests. Firmware trace shows it is a separate animation
+   engine on `0x0F99..0x0F9F` with no live-USB writer; it is config-driven via
+   `0x0BBF` (profile `+0x0F`). See [protocol-audit.md](protocol-audit.md).
 4. **Characterize mode, speed, effect, and brightness** only after their
    staging/apply paths are established. The old `+0x0E` static/wave label and
    short `'S'` register sweep did not validate those controls.
