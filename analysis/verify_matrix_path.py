@@ -13,6 +13,7 @@ FIRMWARE = Path(__file__).resolve().parents[1] / "fw" / "k75_full.bin"
 def main() -> None:
     firmware = FIRMWARE.read_bytes()
     signatures = {
+        0x6AFA: bytes.fromhex("90 08 fa e0 fd 0f"),
         0x711D: bytes.fromhex("90 0e ea e0 ff c3 94 06"),
         0x715A: bytes.fromhex("75 f0 12 eb a4 24 79"),
         0x71B6: bytes.fromhex("75 f0 12 eb a4 24 7a"),

@@ -12,6 +12,8 @@ This is a correction to earlier probe interpretations. It is based on `fw/k75_fu
 
 - A renderer branch at `0x2E8A–0x2ED7` reads `0x0379 + row×18 + column×3` and writes `0x08FA + row×6 + column`. This is another internal use of the `0x08FA` region; it is not safe to treat that region as a verbatim USB frame. The conditions under which this branch runs remain to be traced.
 
+- At `0xA65B–0xA66B`, a USB request gated on bytes `0x1149 = 0x09` and `0x114A = 0x03` calls `0x6AEE`. That routine reads `0x08FA..0x0901` and copies those bytes into `0x1108..0x110F` (`0x6AFA–0x6B86`). This is **internal-to-USB-response direction**, not evidence of the converse USB-input-to-matrix route. The rest of the request/response and any separate receive route still require tracing.
+
 The offline checker `python3 analysis/verify_matrix_path.py` validates the
 stock firmware's instruction signatures and internal matrix address ranges.
 It never opens a HID device; it cannot establish host packet layout or physical
