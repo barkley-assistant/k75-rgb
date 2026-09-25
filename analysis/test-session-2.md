@@ -17,3 +17,15 @@ fcn @ 0x7eed: profile+0x00→0x0F56, +0x1B→0x0F82, +0x1D→0x0F81, +0x0E→0x0
 +0x0F→0x0BBF, +0x1F→0x0F54 (MODE), +0x1E→0x0F50 (channel), +0x07→?.
 CORRECTION: +0x0E is the wave speed param (0x0CC8), NOT the mode. Real mode byte
 = +0x1F → 0x0F54 (factory 0x01). Brightness 0x0F64 has NO config-load path.
+
+## Fn-key ground truth (user-observed 2026-09-25) + Fn+Tab decode
+- Fn+PgUp: brightness ladder, 8 steps (off at 1, back on at 8)
+- Fn+Tab: cycles modes — 4 register states 0x25/0x35/0x45/0x55, visually ~3
+- Fn+<-/->: animation speed. Fn+up/down: brightness. Fn+|: no-op on this board.
+- Fn+Tab handler (0xfb0-0x108f): modes are COMBOS — each sets [0x0F54]=mode,
+  [0x0CC8]=mode, [0x0F3F]=effect index (0x25→0x12), [0x0BCB] flags,
+  brightness (0x35→0x0F64=0x3C). Factory mode = 0x01 (special default wave).
+- Implication: single-byte config sweeps can't change modes cleanly — the whole
+  combo must be written together. This explains all "still a roll" results.
+- TODO (user-requested, future): map what each mode/effect actually IS
+  visually + semantically (mode mapping task).
