@@ -15,6 +15,7 @@ Reverse-engineering the proprietary RGB protocol of the RedThunder K75
 
 | Doc | What's in it |
 |---|---|
+| [`tooling.md`](tooling.md) | `k75` CLI + `k75d` daemon: protocol, permissions, safety model. |
 | [`protocol/protocol-audit.md`](protocol/protocol-audit.md) | **Current correction and test gate** — what the firmware and live tests actually establish. Read before running any probe. |
 | [`protocol/protocol.md`](protocol/protocol.md) | Working USB protocol: reports, command table, verified sequences. |
 | [`protocol/software-protocol.md`](protocol/software-protocol.md) | Vendor-tool protocol decode (official software behaviour). |

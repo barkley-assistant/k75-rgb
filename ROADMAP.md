@@ -29,6 +29,7 @@ Critical path: **Test B** (persistent matrix + effect appearance map) →
 | 1.6 | Save survives replug + 2.4 GHz | ✅ | 100% |
 | 1.7 | Persistent custom matrix (effect `0x13`) | 🔬 | 70% — one live test left |
 | 1.8 | Host effect selection | 🔬 | 75% — two-block protocol traced (arm `0x11E0` + execute `0x1130`); USB framing unpinned |
+| 2.5 | Daemon API (`k75d`) | ✅ | v1 — unix socket, JSON-lines, write-gated, effect-refused |
 | 1.9 | Effect appearance map (17 stops) | 🔬 | 50% — key-side walk pending |
 | 1.10 | Brightness (host) | 🔬 | 30% |
 | 1.11 | Speed (host) | 🔬 | 30% |

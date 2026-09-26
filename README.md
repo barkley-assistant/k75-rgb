@@ -68,6 +68,22 @@ The next live test batch (key map, Fn+Tab effect map, persistence recipe) is
 scripted in [test-plan-3](docs/plans/test-plan-3.md). Requires `sudo` (raw
 HID access to the vendor interface).
 
+## Daemon
+
+`k75d` exposes the same operations as a tiny JSON-lines service over a unix
+socket — the API surface the GUI and scripts talk to:
+
+```sh
+cargo build --release --bin k75d
+sudo ./target/release/k75d --allow-writes &   # socket: /tmp/k75d.sock
+printf '{"op":"map"}\n{"op":"save","send":false,"color":"ff0000"}\n' \
+  | socat - UNIX-CONNECT:/tmp/k75d.sock
+```
+
+Read-only by default; writes need `--allow-writes`; `effect` is refused until
+its carrier frame is pinned. Full protocol and safety model in
+[docs/tooling.md](docs/tooling.md).
+
 ## Layout
 
 - `docs/` — canonical documentation, grouped: `protocol/`, `firmware/`,
