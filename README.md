@@ -4,6 +4,12 @@ Reverse-engineering the **RedThunder K75** keyboard's proprietary RGB protocol a
 building Linux tooling to control it — with the goal of a small Rust daemon + HTTP
 API + Electron GUI as the final product.
 
+## Status
+
+Current feature-completeness tracking lives in [`ROADMAP.md`](ROADMAP.md)
+(per-feature status + progress) with the detailed paths and notes in
+[`docs/feature-map.md`](docs/feature-map.md).
+
 ## Documentation
 
 All findings live in [`docs/`](docs/) — start with the
