@@ -83,13 +83,54 @@ effect table (`0x906d` transfer loop). The exact wValue → effect-index
 encoding over this channel is the remaining unpinned bit of the
 effect-selection story.
 
+## The two-block command protocol (traced, 2026-09-26)
+
+The firmware runs **two** `0x5A`-tagged block channels:
+
+### Phase 1 — arm (block B, buffer `0x11E0`)
+
+- Fed by the same USB byte pump; when the pump's position counter
+  `0x0F78:0x0F79` reaches `IRAM[0x07]` (= 182), flag `0x2A.2` fires
+  (`0x971e`).
+- Dispatcher `0xd15f`: reads `0x11E0`, and if `block[0] == 0x5A` calls
+  `fcn.0000249b` (else `fcn.0000b490`).
+- `fcn.0000249b` is the command-value dispatcher: it reads block fields
+  `0x11E2..0x11E5` and branches on the value:
+  - value `0x22` → **`0x0F3F = 0x22`** (`0x25e9`) — the arming write
+  - value `0x12` → `0x0F52:0x0F53 = 0`, `0x0F3D |= 0x01`
+  - value `0x11` → `0x0F52:0x0F53 = 0`, `0x0F3D |= 0x10`
+  - (gated on `0x0F54 ∈ {0x25, 0x35, 0x45, 0x55}`)
+- `0x0F54 = 0x01` (the second arming condition) is written by
+  `fcn.00004409` (reached via the `0x40xx` ajmp table).
+
+### Phase 2 — execute (block A, buffer `0x1130`)
+
+As documented above: while armed (`0x0F3F==0x22 && 0x0F54==0x01`), each
+pump byte appends to `0x1130`; at 20 bytes `0x0F7F` fires; `0xb684` →
+`fcn.0000bbcd` parses `0x5A <cmd> <value>` (`0xAC` → `0x1155`, `0xAA` →
+`0x0F3F`).
+
+### What remains unpinned
+
+1. The USB-level framing that places `0x5A` at block-B offset `0xE0`
+   (224) and routes pump bytes past position 182 — i.e. the exact report
+   ID and payload layout for phase 1. Both blocks are filled by indirect
+   (register-pointer) copies, which the static disassembly cannot resolve;
+   the fill loop itself is `fcn.0000b63f` / `fcn.000096ce` (byte pump).
+2. Whether phase-2 bytes can ride in the same 520-byte report as phase 1.
+
+Net: the full two-phase command architecture is mapped, but the packet
+layout still needs either a live capture of the official tool or one more
+round of indirect-addressing analysis. Until then, `k75 effect` stays
+send-gated.
+
 ## Status
 
 | Item | State |
 |---|---|
 | `0x5A 0xAC <idx>` block grammar | ✅ pinned (`0xbbcd`) |
 | Block assembly mechanism (20-byte, precondition-gated) | ✅ pinned (`0x9722`/`0xb684`) |
-| Arming route for `0x0F3F=0x22` from host | ❌ unpinned (keyboard-side only so far) |
+| Arming route for `0x0F3F=0x22` | 🔬 traced: block B (`0x11E0`, value `0x22` → `fcn.0000249b`); USB framing still unpinned |
 | Carrier report for the block bytes | ❌ unpinned (any streamed byte while armed) |
 | "AH"/"AZ" control-transfer channel | ✅ pinned (`0x14A9`) |
 | wValue family used by official tool | ✅ found in tool (`0x17FF/0x1600/0x1000/0x0F00/0x1700`) |
