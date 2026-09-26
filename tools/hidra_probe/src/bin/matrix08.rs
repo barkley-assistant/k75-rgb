@@ -5,7 +5,8 @@
 //!   matrix baseline           build a uniform red frame (dry run)
 //!   matrix slot <0..125>      highlight one slot green against red (dry run)
 //!     --send                  actually send via USB
-//!     --repeat 1..20          resend at 500 ms (keeps keys lit; still transient)
+//!     --repeat 1..20          resend at --interval ms (keeps keys lit)
+//!     --interval 100..10000   ms between frames (default 500)
 //!   map                       print the slot -> physical-key hypothesis table
 //!   effect <index>            register block `0x5A 0xAC <index>` (dry run)
 //!     --trace                 send the TRACED-ONLY effect-index write
@@ -27,6 +28,7 @@ enum Command {
         highlight: Option<usize>,
         send: bool,
         repeat: usize,
+        interval_ms: u64,
     },
     Map,
     Effect {
@@ -49,6 +51,7 @@ fn parse_matrix(rest: &[String]) -> Result<Command, String> {
     let mut highlight = None;
     let mut send = false;
     let mut repeat = 1usize;
+    let mut interval_ms = 500u64;
 
     let mut it = rest.iter();
     while let Some(arg) = it.next() {
@@ -76,6 +79,16 @@ fn parse_matrix(rest: &[String]) -> Result<Command, String> {
                     return Err("repeat must be in 1..=20".into());
                 }
             }
+            "--interval" => {
+                interval_ms = it
+                    .next()
+                    .ok_or("--interval requires milliseconds")?
+                    .parse::<u64>()
+                    .map_err(|_| "interval must be a number")?;
+                if !(100..=10_000).contains(&interval_ms) {
+                    return Err("interval must be in 100..=10000 ms".into());
+                }
+            }
             other => return Err(format!("unknown matrix argument: {other}")),
         }
     }
@@ -83,6 +96,7 @@ fn parse_matrix(rest: &[String]) -> Result<Command, String> {
         highlight,
         send,
         repeat,
+        interval_ms,
     })
 }
 
@@ -110,8 +124,8 @@ fn parse_effect(rest: &[String]) -> Result<Command, String> {
 fn usage() -> String {
     "\
 usage:
-  k75 matrix baseline [--send [--repeat 1..20]]
-  k75 matrix slot <0..125> [--send [--repeat 1..20]]
+  k75 matrix baseline [--send [--repeat 1..20] [--interval 100..10000]]
+  k75 matrix slot <0..125> [--send [--repeat 1..20] [--interval 100..10000]]
   k75 effect <0..0x13> [--trace]
 "
     .to_string()
@@ -133,7 +147,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             highlight,
             send,
             repeat,
-        } => run_matrix(highlight, send, repeat).await?,
+            interval_ms,
+        } => run_matrix(highlight, send, repeat, interval_ms).await?,
         Command::Map => run_map()?,
         Command::Effect { index, trace } => run_effect(index, trace).await?,
     }
@@ -170,6 +185,7 @@ async fn run_matrix(
     highlight: Option<usize>,
     send: bool,
     repeat: usize,
+    interval_ms: u64,
 ) -> Result<(), Box<dyn Error>> {
     let frame = MatrixFrame::new(Rgb::RED, highlight.map(|s| (s, Rgb::GREEN)))
         .ok_or("invalid highlight slot")?;
@@ -215,11 +231,11 @@ async fn run_matrix(
         .await??;
         println!("frame {}/{} accepted by transport", n + 1, repeat);
         if n + 1 < repeat {
-            tokio::time::sleep(Duration::from_millis(500)).await;
+            tokio::time::sleep(Duration::from_millis(interval_ms)).await;
         }
     }
     println!(
-        "note: this command is transient (~2 s per frame); repeat keeps keys lit while streaming."
+        "note: this command is transient (~2 s per frame); repeat keeps keys lit while streaming (interval {interval_ms} ms)."
     );
     Ok(())
 }

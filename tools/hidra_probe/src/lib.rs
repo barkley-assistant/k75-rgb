@@ -324,7 +324,7 @@ mod tests {
         assert_eq!(predict_key(63), Some(";"));
         assert_eq!(predict_key(30), Some("F4"));
         assert_eq!(predict_key(95), Some("Right"));
-        assert_eq!(predict_key(90), Some("Mute"));
+        assert_eq!(predict_key(90), Some("Mute*"));
         // structural gaps in the 16x6 grid
         assert_eq!(predict_key(6), None); // (1,0) no key
         assert_eq!(predict_key(76), None); // (12,4) no key
