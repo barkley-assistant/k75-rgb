@@ -228,7 +228,7 @@ pub const KEY_LED_MAP: [Option<&str>; 96] = {
         (81, "Enter"),
         (93, "PgDn"),
         (4, "LShift"),
-        (10, "><"),
+        (10, "\\|"),
         (16, "Z"),
         (22, "X"),
         (28, "C"),
@@ -251,7 +251,7 @@ pub const KEY_LED_MAP: [Option<&str>; 96] = {
         (89, "Down"),
         (95, "Right"),
         (84, "Delete"),
-        (90, "Mute"),
+        (90, "Mute*"),
     ];
     let mut i = 0;
     while i < entries.len() {
