@@ -3,7 +3,7 @@
 **Status:** static-analysis findings from the vendor's Windows control tool.
 The checksummed `0x44` application format below has **not** been shown to
 select the connected keyboard's firmware matrix command `0x08`. Do not use
-this format to infer the offsets or checksums of `matrix08`; the live K75
+this format to infer the offsets or checksums of `k75`; the live K75
 firmware/transport trace is in [protocol-audit.md](protocol-audit.md).
 **Method:** Inno Setup extraction → Ghidra 12.1.4 headless analysis of `OemDrv.exe`
 (MSVC x86, MFC) → decompilation of every function referencing

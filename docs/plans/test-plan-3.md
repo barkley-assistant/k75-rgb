@@ -37,7 +37,7 @@ render of the staged matrix with **no countdown**.
 
 ## Test 1 — complete the key map (verified path)
 
-For each slot below: `sudo ./target/release/matrix08 matrix slot N --send`,
+For each slot below: `sudo ./target/release/k75 matrix slot N --send`,
 then report which physical key (if any) turns green against the red board.
 Keys stay lit ~2 s, so read the board within that window.
 
@@ -67,7 +67,7 @@ table reference. Any mismatch → map that neighbourhood explicitly. GAP and
 NON-KEY results tell us whether those slots drive anything at all
 (e.g. the case light).
 
-`./target/release/matrix08 map` prints the whole 126-slot table.
+`./target/release/k75 map` prints the whole 126-slot table.
 
 ## Test 2 — effect map via Fn+Tab (no packets; pure observation)
 
@@ -81,14 +81,14 @@ the custom/static matrix effect (predicted: the last one before the wrap).
 
 ## Test 3 — persistence recipe (the money shot)
 
-1. Send the stage: `sudo ./target/release/matrix08 matrix baseline --send`
+1. Send the stage: `sudo ./target/release/k75 matrix baseline --send`
    (keys flash red ~2 s, then snap back to the wave — expected).
 2. **Immediately after**, Fn+Tab through the cycle to the **last stop**
    (effect 0x13, the stop identified in Test 2).
 3. Observe for 10+ s: do the keys come back **red and stay red**?
 
 - If they stay red → persistence cracked. Then send
-  `sudo ./target/release/matrix08 matrix slot 63 --send` again and confirm
+  `sudo ./target/release/k75 matrix slot 63 --send` again and confirm
   the `;` key goes green and **stays** green on the static-red board.
 - If nothing / a different animation → the `0x2dac` size gate
   (`0x0377:0x0378` vs `0x08F1:0x08F2`) or `0x0C4D` wasn't armed; we iterate
@@ -98,7 +98,7 @@ the custom/static matrix effect (predicted: the last one before the wrap).
 Also try the reverse order as the fallback experiment:
 
 1. Fn+Tab to the last stop (0x13).
-2. `sudo ./target/release/matrix08 matrix baseline --send`.
+2. `sudo ./target/release/k75 matrix baseline --send`.
 3. Observe whether it persists past the ~2 s window (predicted: no, because
    expiry force-loads 0x0F83=0x01 — but worth confirming).
 

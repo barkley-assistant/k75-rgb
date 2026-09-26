@@ -62,7 +62,7 @@ table) are unmapped — they are either dead or the case-light chain.
 
 ## Next live test (needs the device, do NOT send unattended)
 
-To complete the map, send one `matrix08 slot N --send` per candidate, changing
+To complete the map, send one `k75 slot N --send` per candidate, changing
 only slot N to green against a red baseline, and record which physical key
 lights green. Do this for a spread of indices (e.g. 12, 24, 36, 91, 95) to
 confirm or refute "slot = vendor LED index" across rows and columns, and to

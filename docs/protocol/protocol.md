@@ -50,12 +50,12 @@ payload offset 1. See [the traced ingress path](protocol-audit.md).
 
 ### Traced RAM-matrix experiment (slots 0 and 63 visually validated)
 
-`matrix08 baseline` prints an offline dry run. `matrix08 baseline --send` sends
-one complete, uniform red matrix without saving it. `matrix08 slot 0 --send`
-turned Esc green; `matrix08 slot 63 --send` turned the UK `;` key next to L
+`k75 baseline` prints an offline dry run. `k75 baseline --send` sends
+one complete, uniform red matrix without saving it. `k75 slot 0 --send`
+turned Esc green; `k75 slot 63 --send` turned the UK `;` key next to L
 green while leaving the other keys red. The case light stayed rainbow. The
 key lights turned off after roughly two seconds. A bounded run of
-`matrix08 slot 63 --send --repeat 16` resent the *same* RAM-only frame every
+`k75 slot 63 --send --repeat 16` resent the *same* RAM-only frame every
 500 ms; that kept the keys lit during the run, then they turned off after it
 stopped. Those two slots agree with the vendor LED-ID table, but the remaining
 slots and a firmware-persistent mode have not been verified.
