@@ -8,7 +8,9 @@
 //!     --repeat 1..20          resend at --interval ms (keeps keys lit)
 //!     --interval 100..10000   ms between frames (default 500)
 //!   save <RRGGBB|R G B>       VERIFIED colour write + apply + flash save
-//!     --send                  actually send the 3-step sequence via USB
+//!     --pattern <file>         per-key pattern instead of uniform (one
+//!                              RRGGBB per line, slot order, traced layout)
+//!     --send                   actually send the 3-step sequence via USB
 //!   map                       print the slot -> physical-key hypothesis table
 //!   effect <index>            register block `0x5A 0xAC <index>` (dry run)
 //!     --trace                 send the TRACED-ONLY effect-index write
@@ -37,6 +39,7 @@ enum Command {
     },
     Save {
         color: Rgb,
+        pattern: Option<[Rgb; MATRIX_SLOTS]>,
         send: bool,
     },
     Map,
@@ -113,10 +116,14 @@ fn parse_matrix(rest: &[String]) -> Result<Command, String> {
 fn parse_save(rest: &[String]) -> Result<Command, String> {
     let mut send = false;
     let mut color: Option<Rgb> = None;
+    let mut pattern_path: Option<String> = None;
     let mut it = rest.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
             "--send" => send = true,
+            "--pattern" => {
+                pattern_path = Some(it.next().ok_or("--pattern needs a file path")?.to_string());
+            }
             other => {
                 let byte = |s: &str| u8::from_str_radix(s.trim_start_matches("0x"), 16);
                 if color.is_some() {
@@ -144,8 +151,49 @@ fn parse_save(rest: &[String]) -> Result<Command, String> {
             }
         }
     }
-    let color = color.ok_or("save requires a colour (RRGGBB or R G B hex)")?;
-    Ok(Command::Save { color, send })
+
+    let pattern = match pattern_path {
+        Some(path) => Some(load_pattern(&path)?),
+        None => None,
+    };
+
+    let color = match (&pattern, color) {
+        (Some(_), _) => Rgb::OFF, // pattern carries the colours
+        (None, Some(c)) => c,
+        (None, None) => {
+            return Err("save requires a colour (RRGGBB or R G B hex) or --pattern <file>".into())
+        }
+    };
+    Ok(Command::Save {
+        color,
+        pattern,
+        send,
+    })
+}
+
+/// Load a pattern file: one `RRGGBB` per line, slot order (0..125), `#` comments,
+/// missing slots = OFF.
+fn load_pattern(path: &str) -> Result<[Rgb; MATRIX_SLOTS], String> {
+    let text = std::fs::read_to_string(path).map_err(|e| format!("reading {path}: {e}"))?;
+    let mut slots = [Rgb::OFF; MATRIX_SLOTS];
+    let mut count = 0usize;
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if count >= MATRIX_SLOTS {
+            return Err(format!("{path}: more than {MATRIX_SLOTS} colour lines"));
+        }
+        let hex = line.trim_start_matches("0x");
+        if hex.len() != 6 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(format!("{path} line {}: expected RRGGBB", count + 1));
+        }
+        let byte = |s: &str| u8::from_str_radix(s, 16).map_err(|_| "bad hex");
+        slots[count] = Rgb::new(byte(&hex[0..2])?, byte(&hex[2..4])?, byte(&hex[4..6])?);
+        count += 1;
+    }
+    Ok(slots)
 }
 
 fn parse_effect(rest: &[String]) -> Result<Command, String> {
@@ -175,6 +223,7 @@ usage:
   k75 matrix baseline [--send [--repeat 1..20] [--interval 100..10000]]
   k75 matrix slot <0..125> [--send [--repeat 1..20] [--interval 100..10000]]
   k75 save <RRGGBB | R G B> [--send]
+  k75 save --pattern <file> [--send]
   k75 effect <0..0x13> [--trace]
 "
     .to_string()
@@ -198,7 +247,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             repeat,
             interval_ms,
         } => run_matrix(highlight, send, repeat, interval_ms).await?,
-        Command::Save { color, send } => run_save(color, send).await?,
+        Command::Save {
+            color,
+            pattern,
+            send,
+        } => run_save(color, pattern, send).await?,
         Command::Map => run_map()?,
         Command::Effect { index, trace } => run_effect(index, trace).await?,
     }
@@ -292,13 +345,37 @@ async fn run_matrix(
     Ok(())
 }
 
-async fn run_save(color: Rgb, send: bool) -> Result<(), Box<dyn Error>> {
-    let write = PerKeyColorFrame::new(color);
+async fn run_save(
+    color: Rgb,
+    pattern: Option<[Rgb; MATRIX_SLOTS]>,
+    send: bool,
+) -> Result<(), Box<dyn Error>> {
+    let write = match pattern {
+        Some(slots) => PerKeyColorFrame::from_slots(&slots),
+        None => PerKeyColorFrame::new(color),
+    };
     let apply = ApplyFrame::new();
     let save = SaveFlashFrame::new();
 
     println!("verified colour write + apply + flash save (2026-09-24 POC):");
-    println!("  colour #{:02x}{:02x}{:02x}", color.r, color.g, color.b);
+    match pattern {
+        Some(slots) => {
+            let lit = slots.iter().filter(|c| **c != Rgb::OFF).count();
+            println!(
+                "  per-key pattern: {lit}/{} slots lit (stride 0x12, slot i @ payload 2+i*3)",
+                MATRIX_SLOTS
+            );
+            println!(
+                "  first 6 slots: {}",
+                slots[..6]
+                    .iter()
+                    .map(|c| format!("#{:02x}{:02x}{:02x}", c.r, c.g, c.b))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            );
+        }
+        None => println!("  colour #{:02x}{:02x}{:02x}", color.r, color.g, color.b),
+    }
     println!("  1) cmd 0x0a per-key write  (uniform fill, 172 RGB triples)");
     println!("  2) cmd 0x0b apply           (-> PWM)");
     println!("  3) cmd 0x06 flash save      (op 0x56 commit, ~380 B)");
@@ -347,8 +424,12 @@ async fn run_save(color: Rgb, send: bool) -> Result<(), Box<dyn Error>> {
     println!("ACK");
     tokio::time::sleep(Duration::from_millis(800)).await;
     println!(
-        "DONE. Keys should now be {:02x}{:02x}{:02x}.",
-        color.r, color.g, color.b
+        "DONE. {}",
+        if pattern.is_some() {
+            "keys should now show the pattern."
+        } else {
+            "keys should now be the staged colour."
+        }
     );
     println!("Verify persistence: unplug/replug, and check 2.4 GHz mode too.");
     Ok(())
