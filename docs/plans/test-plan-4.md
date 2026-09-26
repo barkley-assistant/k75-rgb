@@ -64,7 +64,11 @@ old probes; re-run it through the clean CLI.
 3. Switch to 2.4 GHz wireless (dongle). Keys still red? (Expected yes.)
 4. `sudo ./target/release/k75 save 0000ff --send` — keys blue; replug;
    still blue? (Confirms the save isn't a one-off.)
-5. Finish with Fn+Esc to restore factory, or save a colour you actually
+5. Optional (pattern re-verification): create a small pattern file (one
+   `RRGGBB` per line, slot order) and `sudo k75 save --pattern file --send`.
+   Expect the traced slot geometry to hold — this is the first live test of
+   `from_slots`.
+6. Finish with Fn+Esc to restore factory, or save a colour you actually
    want as the daily state.
 
 Note: `save` writes flash. The case light state is not part of this path —

@@ -4,7 +4,7 @@ The 72-byte profile at CODE **0xA418** is the default config image the
 firmware loads. Historical experiments wrote 72-byte images through report
 0x09 commands `0x0a` + `0x0b`. The live color changes are real, but the exact
 host-to-profile staging semantics require more tracing. **The table below is
-historical and partly superseded**: read [test-session-2](../analysis/test-session-2.md)
+historical and partly superseded**: read [test-session-2](../../analysis/test-session-2.md)
 and the [protocol audit](protocol-audit.md) before constructing a new packet.
 In particular, `+0x0E` was later traced to `0x0CC8` (speed-related), not the
 mode register; `+0x1F` feeds mode register `0x0F54`.
@@ -42,7 +42,7 @@ cmd 0x0b (apply). No saves — all non-persistent. Baseline: Fn+Esc reset.
 The session-1 table **above** records the observation as reported at the time,
 **not** a validated static-versus-wave mapping. Session 2 established that
 factory default itself is a moving wave; changing `+0x0E` changed its speed.
-See [test-session-2](../analysis/test-session-2.md).
+See [test-session-2](../../analysis/test-session-2.md).
 
 ## Ready-made test images (analysis/)
 

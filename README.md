@@ -61,6 +61,8 @@ binary is a thin CLI over it:
   command, so sending would risk a "plausible packet that does nothing".
 - `save <RRGGBB|R G B> [--send]` runs the **verified** colour write + apply
   + flash-save sequence (user-verified 2026-09-24, ported into the library).
+  `save --pattern <file>` does the same with a per-key pattern (one RRGGBB
+  per line, slot order — layout traced from `fcn.00007108`).
 
 The next live test batch (key map, Fn+Tab effect map, persistence recipe) is
 scripted in [test-plan-3](docs/plans/test-plan-3.md). Requires `sudo` (raw

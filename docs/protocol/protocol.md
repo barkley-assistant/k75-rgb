@@ -87,7 +87,7 @@ that profile byte `+0x0E` selected static versus wave was **retracted** after
 a factory reset established that the default is already a moving rainbow wave.
 Later firmware analysis maps `+0x0E` to speed-related register `0x0CC8` and
 `+0x1F` to mode register `0x0F54`. See
-[test-session-2](../analysis/test-session-2.md) and the
+[test-session-2](../../analysis/test-session-2.md) and the
 [protocol audit](protocol-audit.md).
 
 ## 4. Report 0x06 — register protocol
