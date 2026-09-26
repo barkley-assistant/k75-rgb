@@ -65,6 +65,16 @@ impl Rgb {
         g: 0x00,
         b: 0x00,
     };
+    pub const BLUE: Rgb = Rgb {
+        r: 0x00,
+        g: 0x00,
+        b: 0xff,
+    };
+    pub const WHITE: Rgb = Rgb {
+        r: 0xff,
+        g: 0xff,
+        b: 0xff,
+    };
 
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
         Rgb { r, g, b }
@@ -146,9 +156,10 @@ pub const COLOR_PAYLOAD_LEN: usize = 519;
 ///
 /// Layout matches the verified sequence: report ID `0x09`, command `0x0a` at
 /// report offset 1, RGB triples from report offset 2 to the end of the
-/// 519-byte payload. Only the **uniform fill** is verified; per-key
-/// pattern placement within this frame's table (stride 0x12 = 18/row,
-/// `fcn.00007108`) is traced but not visually confirmed.
+/// 519-byte payload. Only the **uniform fill** is verified visually;
+/// per-key pattern placement is traced (`fcn.00007108`, stride 0x12 = 18/row)
+/// and implemented via [`PerKeyColorFrame::from_slots`], awaiting visual
+/// confirmation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PerKeyColorFrame {
     bytes: [u8; REPORT_LEN],
@@ -168,6 +179,24 @@ impl PerKeyColorFrame {
             i += 3;
         }
         PerKeyColorFrame { bytes }
+    }
+
+    /// Build a per-key pattern frame (traced layout, unverified visually).
+    ///
+    /// Slot geometry pinned in `fcn.00007108` (the cmd `0x0a` handler): RGB
+    /// triples are copied row-by-row into the `0x0379` matrix with stride
+    /// `0x12` (18 bytes = 6 slots × RGB per row), so slot `i` lands at
+    /// payload offset `2 + i*3` — the same row-major geometry as the `0x08`
+    /// frame (offsets 8..385).
+    pub fn from_slots(slots: &[Rgb; MATRIX_SLOTS]) -> Self {
+        let mut f = Self::new(Rgb::OFF);
+        for (i, c) in slots.iter().enumerate() {
+            let off = 2 + i * 3;
+            f.bytes[off] = c.r;
+            f.bytes[off + 1] = c.g;
+            f.bytes[off + 2] = c.b;
+        }
+        f
     }
 
     pub fn as_bytes(&self) -> &[u8; REPORT_LEN] {
@@ -446,6 +475,22 @@ mod tests {
         let save = SaveFlashFrame::new();
         assert_eq!(&save.as_bytes()[..2], &[0x09, 0x06]);
         assert!(save.as_bytes()[2..].iter().all(|b| *b == 0));
+    }
+
+    #[test]
+    fn per_key_pattern_slot_geometry() {
+        // slot i -> payload offset 2 + i*3 (row-major, stride 0x12 = 6 slots/row)
+        let mut slots = [Rgb::OFF; MATRIX_SLOTS];
+        slots[0] = Rgb::RED;
+        slots[6] = Rgb::GREEN; // first slot of second row
+        slots[125] = Rgb::BLUE;
+        let f = PerKeyColorFrame::from_slots(&slots);
+        let b = f.as_bytes();
+        assert_eq!(&b[2..5], &[0xff, 0, 0]);
+        assert_eq!(&b[20..23], &[0x00, 0xff, 0]); // 2 + 6*3 = 20
+        assert_eq!(&b[377..380], &[0x00, 0x00, 0xff]); // 2 + 125*3 = 377
+        assert_eq!(b[0], 0x09);
+        assert_eq!(b[1], 0x0a);
     }
 
     #[test]
