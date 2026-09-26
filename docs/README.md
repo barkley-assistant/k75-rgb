@@ -18,6 +18,7 @@ Reverse-engineering the proprietary RGB protocol of the RedThunder K75
 | [`protocol/protocol-audit.md`](protocol/protocol-audit.md) | **Current correction and test gate** — what the firmware and live tests actually establish. Read before running any probe. |
 | [`protocol/protocol.md`](protocol/protocol.md) | Working USB protocol: reports, command table, verified sequences. |
 | [`protocol/software-protocol.md`](protocol/software-protocol.md) | Vendor-tool protocol decode (official software behaviour). |
+| [`protocol/wireless.md`](protocol/wireless.md) | 2.4 GHz dongle forensics: no live lighting channel — wireless = save-then-replay. |
 | [`protocol/config-region.md`](protocol/config-region.md) | The 72-byte config profile: confirmed offsets, hypotheses, live results. |
 
 ## Firmware internals
@@ -42,7 +43,7 @@ Reverse-engineering the proprietary RGB protocol of the RedThunder K75
 | Product | RedThunder K75 (short name "K75"; firmware rev marker `Fw=26`) |
 | Manufacturer | SINO WEALTH (Sino Wealth Electronics, Shanghai) |
 | USB wired | VID `0x258A` PID `0x019D` — "Gaming Keyboard" / "Gaming KB" |
-| USB wireless (2.4 GHz dongle) | VID `0x3554` PID `0x0150` |
+| USB wireless (2.4 GHz dongle) | VID `0x258A` PID `0x0150` — "Gaming KB" (verified on-bus; KB.ini's `0x3554` is a red herring) |
 | USB descriptor strings | "SINO WEALTH", "Gaming Keyboard", bcdDevice `0001`, "BY Tech" |
 | MCU | 8051-compatible, 64 KB flash + 4 KB ISP boot region; exact part number not stated in firmware or vendor tool (likely Sino Wealth SH68F family — unconfirmed) |
 | Layout | en-GB / UK ISO (16×6 key grid, 81 keys + gaps) |

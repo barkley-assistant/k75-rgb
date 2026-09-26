@@ -119,8 +119,10 @@ seen in the generic tool table).
 ```
 Fw=26                     firmware version
 VID=0x258a PID=0x019D     wired identity (matches our device)
-VID_Wireless=0x3554       wireless dongle VID
+VID_Wireless=0x3554       wireless dongle VID (KB.ini claim — RED HERRING)
 PID_Wireless=0x0150       wireless dongle PID
+                          (actual on-bus dongle: VID 0x258A, PID 0x0150,
+                          see protocol/wireless.md)
 Psd=6,0,0,0,0,7a          packet def: report 6, 122-byte payload
 Light=0,1,2,3,4           software brightness steps
 LightHW=0,5,10,15,20      hardware brightness values for those steps

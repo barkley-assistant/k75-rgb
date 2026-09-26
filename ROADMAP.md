@@ -9,6 +9,7 @@ end-to-end path is proven, not a promise.
 | Track | Progress | Notes |
 |---|---:|---|
 | 1 — Core lighting (write / display / save) | ~70% | Write+save+2.4 GHz verified; host effect selection and polish remain |
+| Wireless (2.4 GHz) | **answered** | Dongle forensics 2026-09-26: no live lighting channel — save-then-replay only |
 | 2 — Case / side light | ~45% | Fn walk + frame-stepping verified; direct colour write not found yet |
 | 3 — Platform & safety | ~50% | Recovery + backup solid; dongle untested, control channel traced only |
 | **User goal** (write patterns → save → 2.4 GHz) | **✅ 100%** | Verified 2026-09-24; re-verification with current tooling queued |
@@ -48,7 +49,7 @@ Critical path: **Test B** (persistent matrix + effect appearance map) →
 | # | Feature | Status | Progress |
 |---|---|---|---|
 | 3.1 | Recovery (Fn+Esc) | ✅ | 100% |
-| 3.2 | 2.4 GHz matrix display | ❓ | 0% — dongle untested |
+| 3.2 | 2.4 GHz matrix display | ⛔ | 0% — descriptor forensics: no `0x09` on dongle; wireless = save-then-replay |
 | 3.3 | Control-transfer channel (wValue `0x01`/`0x02`) | 🔬 | 30% |
 | 3.4 | Profile config read/write (`0x0A`/`0x0B`) | 🔬 | 20% — deferred (0x04 incident) |
 | 3.5 | Stock-firmware backup & restore | ✅ | 100% |
@@ -61,6 +62,7 @@ Critical path: **Test B** (persistent matrix + effect appearance map) →
 | 2026-09-24 | Per-key matrix display verified (slot 0 → Esc, slot 63 → `;`) |
 | 2026-09-25 | Persistence mechanism traced end-to-end (`0x0F83=0x13` + `0x0C4D=0x69`) |
 | 2026-09-26 | Key map: 14 slots visually pinned, gaps + non-key slots confirmed |
+| 2026-09-26 | Dongle forensics: real dongle is `258A:0150`; no `0x09` lighting report over 2.4 GHz |
 | 2026-09-26 | Case light: Fn+Tab walks 11 stops; **each `0x08` frame steps the case** |
 
 ## Next up
@@ -72,7 +74,8 @@ Critical path: **Test B** (persistent matrix + effect appearance map) →
    (`k75 save <colour> --send`); run the replug + 2.4 GHz check live.
 3. **Case determinism** — Fn+Esc + N frames → predictable case stage (2.4).
 4. **Host effect selection** — pin carrier for `0x5A 0xAC` block (1.8).
-5. **Polish** — brightness/speed host writes, 2.4 GHz matrix probe, GUI.
+5. **Polish** — brightness/speed host writes, GUI. (2.4 GHz live drive is
+   closed: no `0x09` on the dongle.)
 
 See [`docs/reference/feature-map.md`](docs/reference/feature-map.md) for the
 detailed table with command paths and notes.

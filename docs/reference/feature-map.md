@@ -46,7 +46,7 @@ Last updated 2026-09-26 (post experiment A). Statuses:
 |---|---|---|
 | Save survives replug | **VERIFIED** | cmd `0x06` path (2026-09-24). |
 | Save works on 2.4 GHz wireless | **VERIFIED** | user-observed (2026-09-24). |
-| `0x08` matrix over 2.4 GHz | **UNKNOWN** | dongle HID interface untested; may or may not expose feature-report 0x09. |
+| `0x08` matrix over 2.4 GHz | **RESOLVED: not exposed** | dongle descriptor (2026-09-26) has no 520-byte report `0x09` — wireless is save-then-replay; see `../protocol/wireless.md`. |
 | Recovery | **VERIFIED** | Fn+Esc ~3 s = factory reset; restores rainbow. Never send report-0x05 ISP `0x45`, nor report-0x09 cmd `0x04`. |
 
 ## What "feature-complete" still needs
