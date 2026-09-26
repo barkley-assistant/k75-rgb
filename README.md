@@ -6,83 +6,81 @@ API + Electron GUI as the final product.
 
 ## Status
 
-Current feature-completeness tracking lives in [`ROADMAP.md`](ROADMAP.md)
-(per-feature status + progress) with the detailed paths and notes in
-[`docs/feature-map.md`](docs/feature-map.md).
+- **Colour write** ✅ verified live (wired + 2.4 GHz wireless)
+- **Flash save** ✅ verified — survives power-cycle and wireless mode
+- **Per-key matrix display** ✅ verified — 126 slots, 15 keys visually pinned
+- **Case light** ✅ host-driveable — Fn+Tab walks 11 stops, each `0x08` frame steps the case animation
+- **Persistent custom matrix** 🔬 traced end-to-end, one live re-test left
+- **Host effect selection** 🔬 carrier packet unpinned
+
+Full tracker: [`ROADMAP.md`](ROADMAP.md) · detailed paths: [`docs/reference/feature-map.md`](docs/reference/feature-map.md).
 
 ## Documentation
 
-All findings live in [`docs/`](docs/) — start with the
-[documentation index](docs/README.md).
+All findings live in [`docs/`](docs/) — start with the [documentation index](docs/README.md).
 
 | Doc | Covers |
 |---|---|
-| [docs/protocol.md](docs/protocol.md) | Verified USB protocol: reports, command table, working sequences |
-| [docs/architecture.md](docs/architecture.md) | Firmware internals: effect engine, registers, data-flash, matrix |
-| [docs/config-region.md](docs/config-region.md) | The 72-byte config profile: confirmed offsets + live test results |
-| [docs/recovery.md](docs/recovery.md) | Fn+Esc factory reset, ISP reflash, backups, hard rules |
-| [docs/PLAN.md](docs/PLAN.md) | Remaining work broken down session by session |
-
-## Status
-
-- **M1 — color change** ✅ verified live (wired + 2.4G wireless)
-- **Persistence (save)** ✅ verified — survives power-cycle and wireless mode
-- **Mode/speed mapping** 🔬 `+0x0E` was misidentified as the mode byte; later disassembly maps it to speed-related register `0x0CC8`. `+0x1F` feeds mode register `0x0F54`. No static-mode control has been established.
-- **Per-key / side light** 🔬 report-0x09 command `0x08` is traced from USB receive to a 21×6 RGB matrix and visually verified: slot 0 lights Esc green and slot 63 lights the UK `;` key green against otherwise red keys. Each frame expires after about two seconds; bounded host streaming kept it lit until the sends stopped. The case remained rainbow. Other key slots and independent case-light control remain unmapped; see [protocol audit](docs/protocol-audit.md).
+| [protocol audit](docs/protocol/protocol-audit.md) | What firmware + live tests actually establish (read before probing) |
+| [protocol](docs/protocol/protocol.md) | Verified USB protocol: reports, command table, sequences |
+| [firmware architecture](docs/firmware/architecture.md) | Effect engine, registers, data-flash, matrix |
+| [rendering architecture](docs/firmware/rendering-architecture.md) | Transient vs persistent rendering, `0x0F83=0x13` path |
+| [case frame stepping](docs/firmware/case-frame-stepping.md) | Case light: 1 frame = 1 animation step |
+| [key map](docs/reference/key-map.md) | 126 slots ↔ physical keys, verified pins |
+| [config region](docs/protocol/config-region.md) | 72-byte config profile layout |
+| [recovery](docs/reference/recovery.md) | Fn+Esc reset, ISP reflash, hard rules |
+| [plan](docs/plans/PLAN.md) | Remaining work with acceptance criteria |
 
 ## Running
 
 ```sh
 cd tools/hidra_probe
-cargo build --release --bin matrix08 --bin get09_readonly
+cargo build --release --bin k75 --bin get09_readonly
 
 # matrix frames (verified path)
-./target/release/matrix08 matrix baseline                 # offline preview
-./target/release/matrix08 matrix slot 63                  # offline preview
-./target/release/matrix08 map                             # slot -> key hypothesis table
-sudo ./target/release/matrix08 matrix baseline --send     # send (transient)
-sudo ./target/release/matrix08 matrix slot 63 --send --repeat 16
+./target/release/k75 matrix baseline              # offline preview
+./target/release/k75 matrix slot 63               # offline preview
+./target/release/k75 map                          # slot -> key hypothesis table
+sudo ./target/release/k75 matrix baseline --send  # send (transient ~2 s)
+sudo ./target/release/k75 matrix slot 63 --send --repeat 16 --interval 500
 
-# traced-only effect-index register block (does NOT send; see below)
-./target/release/matrix08 effect 0x13
+# traced-only effect-index register block (does NOT send; carrier unpinned)
+./target/release/k75 effect 0x13
 ```
 
-The next live test batch (key-map completion, Fn+Tab effect map, and the
-persistence recipe) is scripted in [docs/test-plan-3.md](docs/test-plan-3.md).
+The protocol core lives in `src/lib.rs` — a `#![forbid(unsafe_code)]` library
+encoding the verified matrix-frame format, the vendor key map, and the traced
+effect-index register block, each gated behind explicit markers. The `k75`
+binary is a thin CLI over it:
 
-The protocol core now lives in `src/lib.rs` — a `#![forbid(unsafe_code)]`
-library encoding the verified matrix-frame format and the traced effect-index
-register block, each gated behind explicit markers. The `matrix08` binary is a
-thin CLI over it:
-
-- `matrix baseline|slot <N>` builds a frame; `--send` writes it, `--repeat
-  1..20` resends at 500 ms (keeps keys lit, still transient ~2 s).
+- `matrix baseline|slot <N>` builds a frame; `--send` writes it; `--repeat
+  1..20` resends; `--interval 100..10000` sets the frame spacing in ms
+  (default 500).
 - `effect <index>` prints the traced `0x5A 0xAC <index>` register block but
   **refuses to send**: its carrier report is not yet pinned to a verified
   command, so sending would risk a "plausible packet that does nothing".
 
-`matrix08 baseline --send` is a volatile test that writes the complete red
-matrix and does **not** save it. `matrix08 slot 63 --send` changed only the
-UK `;` key to green in a live test; `--repeat 16` bounds a half-second host
-refresh experiment that kept the keys lit while it ran. The key lights turn
-off again when refresh stops; the case light stayed rainbow. Do not run the
-older save/config probes as part of this experiment.
-
-Requires `sudo` (raw HID access to the vendor interface).
+The next live test batch (key map, Fn+Tab effect map, persistence recipe) is
+scripted in [test-plan-3](docs/plans/test-plan-3.md). Requires `sudo` (raw
+HID access to the vendor interface).
 
 ## Layout
 
-- `docs/` — canonical documentation (protocol, architecture, config, plan)
-- `tools/hidra_probe/` — Rust CLI probes (uses [hidra](https://crates.io/crates/hidra))
-- `analysis/` — raw RE artifacts: disassembly, decode reports, test images, session logs
+- `docs/` — canonical documentation, grouped: `protocol/`, `firmware/`,
+  `reference/`, `plans/`
+- `tools/hidra_probe/` — Rust library + `k75` CLI (uses [hidra](https://crates.io/crates/hidra));
+  `legacy-probes/` holds historical experiments kept for reference
+- `analysis/` — raw RE artifacts: disassembly, config dumps, video evidence,
+  session logs
 - `fw/` — stock firmware dumps (MD5-verified, for ISP recovery)
 
 ## Recovery
 
 **Fn+Esc (hold ~3s)** = factory reset, fixes any wedged lighting config.
 Full ISP reflash via [sinowisp](https://crates.io/crates/sinowisp) from the
-backups in `fw/`. **Never send `0x45` (flash erase) on the ISP channel.**
-Details in [docs/recovery.md](docs/recovery.md).
+backups in `fw/`. **Never send `0x45` (flash erase) on the ISP channel, and
+never use report-0x09 command `0x04`.** Details in
+[recovery](docs/reference/recovery.md).
 
 ## License
 

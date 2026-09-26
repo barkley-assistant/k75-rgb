@@ -1,44 +1,84 @@
 # K75 RGB — Documentation Index
 
 Reverse-engineering the proprietary RGB protocol of the RedThunder K75
-(8051-based Sino Wealth keyboard) and building a Linux driver + CLI + GUI.
+(8051-based Sino Wealth keyboard) and building Linux tooling.
 
-## Read this first
+## Where to start
 
 | Doc | What's in it |
 |---|---|
-| [protocol-audit.md](protocol-audit.md) | **Current correction and test gate:** what the firmware and live tests actually establish; read before running probes. |
-| [protocol.md](protocol.md) | Working USB notes; older assumptions are corrected in the audit. |
-| [architecture.md](architecture.md) | Firmware internals: effect engine, registers, data-flash, per-key matrix. Instruction-level decode with addresses. |
-| [rendering-architecture.md](rendering-architecture.md) | Transient-vs-persistent rendering, the `0x0F59` countdown, and the traced `0x0F83=0x13` persistence path + register-block ingress. |
-| [key-map.md](key-map.md) | Vendor LED index (`col×6+row`) vs the 21×6 firmware matrix; verified slot pins and the remaining mapping plan. |
-| [config-region.md](config-region.md) | The 72-byte config profile layout — what's confirmed, what's hypothesis, live test results. |
-| [recovery.md](recovery.md) | Safety net: Fn+Esc factory reset, ISP reflash, backups, hard rules. **Read before touching the device.** |
-| [PLAN.md](PLAN.md) | What's left, broken down into concrete steps with acceptance criteria. |
+| [`../ROADMAP.md`](../ROADMAP.md) | Feature-completeness tracker: status + progress per feature. |
+| [`reference/feature-map.md`](reference/feature-map.md) | Detailed feature table with paths, commands, and verification status. |
+| [`reference/recovery.md`](reference/recovery.md) | **Safety net:** Fn+Esc factory reset, backups, hard rules. Read before touching the device. |
+
+## Protocol & USB
+
+| Doc | What's in it |
+|---|---|
+| [`protocol/protocol-audit.md`](protocol/protocol-audit.md) | **Current correction and test gate** — what the firmware and live tests actually establish. Read before running any probe. |
+| [`protocol/protocol.md`](protocol/protocol.md) | Working USB protocol: reports, command table, verified sequences. |
+| [`protocol/software-protocol.md`](protocol/software-protocol.md) | Vendor-tool protocol decode (official software behaviour). |
+| [`protocol/config-region.md`](protocol/config-region.md) | The 72-byte config profile: confirmed offsets, hypotheses, live results. |
+
+## Firmware internals
+
+| Doc | What's in it |
+|---|---|
+| [`firmware/architecture.md`](firmware/architecture.md) | Effect engine, registers, data-flash, per-key matrix — instruction-level decode with addresses. |
+| [`firmware/rendering-architecture.md`](firmware/rendering-architecture.md) | Transient-vs-persistent rendering, the `0x0F59` countdown, `0x0F83=0x13` persistence path, register-block ingress. |
+| [`firmware/case-frame-stepping.md`](firmware/case-frame-stepping.md) | Case light: frame-synced animation stepping (1 frame = 1 step). |
+
+## Mapping & reference
+
+| Doc | What's in it |
+|---|---|
+| [`reference/key-map.md`](reference/key-map.md) | Vendor LED index (`col×6+row`) vs the 21×6 firmware matrix; verified slot pins. |
+
+## Device identity
+
+| Field | Value |
+|---|---|
+| Product | RedThunder K75 (short name "K75"; firmware rev marker `Fw=26`) |
+| Manufacturer | SINO WEALTH (Sino Wealth Electronics, Shanghai) |
+| USB wired | VID `0x258A` PID `0x019D` — "Gaming Keyboard" / "Gaming KB" |
+| USB wireless (2.4 GHz dongle) | VID `0x3554` PID `0x0150` |
+| USB descriptor strings | "SINO WEALTH", "Gaming Keyboard", bcdDevice `0001`, "BY Tech" |
+| MCU | 8051-compatible, 64 KB flash + 4 KB ISP boot region; exact part number not stated in firmware or vendor tool (likely Sino Wealth SH68F family — unconfirmed) |
+| Layout | en-GB / UK ISO (16×6 key grid, 81 keys + gaps) |
+
+Source: USB string descriptors in `../fw/` dumps and the vendor tool's
+`Dev/kb/KB.ini`.
+
+## Plans & test sessions
+
+| Doc | What's in it |
+|---|---|
+| [`plans/PLAN.md`](plans/PLAN.md) | Remaining work, concrete steps with acceptance criteria. |
+| [`plans/test-plan-3.md`](plans/test-plan-3.md) | Current live-test batch (key map, effects, persistence, case light). |
+| [`plans/test-plan-2.md`](plans/test-plan-2.md) | Retired earlier batch; kept for history. |
 
 ## Raw artifacts
 
 - `../analysis/disasm_v2.txt` — full 8051 disassembly of the stock firmware
-  (3.1 MB, the primary RE source; verified sound against `../fw/k75_full.bin`)
-- `../analysis/fn1b46-decode.md` — subagent decode of the per-key matrix
-  walker (`fcn.00001b46` + `fcn.000057db`), incl. frame-base correction
-- `../analysis/test-session-1.md` — log of the first live config test session
-- `../analysis/*.bin` — pre-built config test images for live sessions
+  (3.1 MB, the primary RE source)
+- `../analysis/key-led-map.txt` — vendor LED ID table
+- `../analysis/config-dumps/*.bin` — 72-byte config test images
+- `../analysis/video-evidence-2026-09-26/` — case-strip video frames,
+  viewer, and frame-sample analysis
 - `../fw/` — firmware dumps (full + bootloader, MD5-verified)
-- `../tools/` — Rust probe binaries (hidra)
+- `../tools/hidra_probe/` — Rust library + CLI (`k75`) and read-only probes
+- `../tools/hidra_probe/legacy-probes/` — historical probes, unmaintained;
+  may encode disproven assumptions
 
 ## The 30-second version
 
-1. **Color + save were observed live.** Full-payload red changed the keys;
-   save persisted a color setting across a power-cycle and wireless mode.
-   The red keys still showed a moving wave, not a static effect.
-2. **The old mode claim was retracted.** `+0x0E` feeds `0x0CC8`
-   (speed-related), while `+0x1F` feeds mode register `0x0F54`.
-3. **Per-key control was visually verified.** A complete command-`0x08` red
-   frame lit the keys; slot 0 turned Esc green and slot 63 turned the UK `;`
-   key green against otherwise red keys. The key lights went off after about
-   two seconds, while a bounded repeated-frame test kept them lit until
-   streaming stopped. The case side light stayed rainbow; see
-   [protocol-audit.md](protocol-audit.md).
-4. **Read [protocol-audit.md](protocol-audit.md)** before running a probe;
-   the old `setkey` and `sidelight` programs are disabled.
+1. **Colour write + flash save were observed live** (`0x0a`/`0x0b`/`0x06`)
+   and persisted across replug **and 2.4 GHz wireless mode**.
+2. **Per-key matrix display verified** (`0x08`, 126 slots); 15 key slots
+   visually pinned, remaining keys mapped by vendor-table reference.
+3. **Case light is host-driveable**: Fn+Tab walks 11 case stops, and each
+   `0x08` matrix frame steps the case animation once.
+4. **Persistence via effect `0x13`** is firmware-traced; one live re-test
+   remains (see `plans/test-plan-3.md`).
+5. Read [`protocol/protocol-audit.md`](protocol/protocol-audit.md) before
+   running any probe; the old `setkey`/`sidelight` programs are retired.

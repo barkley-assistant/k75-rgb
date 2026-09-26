@@ -125,7 +125,7 @@ also touched by the Fn keys.
   effect `0x13` (last Fn+Tab stop). The scheduler's effect dispatch
   (`0x77C4` → `0x2DAC`) then renders the staged matrix continuously with no
   countdown. This is the leading live-test hypothesis — see
-  [test-plan-3.md](test-plan-3.md).
+  [test-plan-3.md](../plans/test-plan-3.md).
 
 Note: `0x0F3F` (the register-block target) is a **separate** register from
 `0x0F83`. The exact `0x0F3F → 0x0F83` translation remains unproven and is the

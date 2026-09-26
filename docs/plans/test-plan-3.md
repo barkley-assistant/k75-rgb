@@ -109,7 +109,7 @@ needs the config path (`0x0A` stage + `0x0B` apply) plus a config reload —
 the reload command is exactly what previously wedged the lights
 (Fn+Esc recovered). **Do not run in this batch**; keep it queued until Tests
 1–3 are done and we can afford the recovery dance. See
-[protocol-audit.md](protocol-audit.md).
+[protocol-audit.md](../protocol/protocol-audit.md).
 
 ## Safety
 

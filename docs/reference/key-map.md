@@ -44,7 +44,7 @@ stride (`row × 6`), so the physical chain is **21 groups × 6 = 126 LEDs**.
 - **30 slots have no key** (126 − 96). These are unpopulated key positions
   and/or the case/side underglow LEDs, which are wired into the same serial
   chain but driven by the separate case engine (see
-  [protocol-audit.md](protocol-audit.md)) rather than the key matrix.
+  [protocol-audit.md](../protocol/protocol-audit.md)) rather than the key matrix.
 
 ## What this means for mapping the remaining keys
 

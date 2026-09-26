@@ -17,7 +17,7 @@ were built but NOT yet sent live — they're the first tests of Session 2.
 The session-1 classification of `+0x0E` as a static-versus-wave mode byte
 was retracted after factory reset showed that the default already animates.
 See [test-session-2.md](test-session-2.md) and
-[docs/protocol-audit.md](../docs/protocol-audit.md). The observations below
+[docs/protocol-audit.md](../docs/protocol/protocol-audit.md). The observations below
 remain historical, but their old labels are not a packet specification.
 
 ## Recorded observations

@@ -132,7 +132,7 @@ frame, or `0x1150` as host `payload[0]`, are superseded.
 ## 6. Proven recovery
 
 Fn+Esc (hold ~3s) = factory reset of the lighting engine. Details and the
-nuclear option in [recovery.md](recovery.md).
+nuclear option in [recovery.md](../reference/recovery.md).
 
 ## 7. Hard rules
 

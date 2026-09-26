@@ -26,5 +26,5 @@ Report-0x09 command `0x04` remains **forbidden**: it previously produced a
 lights-off state that known USB commands failed to recover; Fn+Esc was required.
 Fn+PgUp's ordinary keys-off state is distinct and did allow a later red write.
 
-See [protocol-audit.md](protocol-audit.md) for disassembly offsets and live-test
+See [protocol-audit.md](../protocol/protocol-audit.md) for disassembly offsets and live-test
 evidence. The original plan remains available in git history.

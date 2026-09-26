@@ -109,7 +109,7 @@ while the case stayed rainbow. The display lasted about two seconds per
 frame, and repeated RAM-only frames kept it lit while streaming. Other
 physical-key positions and independent case-light control remain unknown.
 The old 18-byte `sidelight` probe misidentified the table and is disabled.
-See [protocol-audit.md](protocol-audit.md).
+See [protocol-audit.md](../protocol/protocol-audit.md).
 
 ## 8. Flash read command (cmd 0x04) internals
 
