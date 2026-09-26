@@ -7,6 +7,8 @@
 //!     --send                  actually send via USB
 //!     --repeat 1..20          resend at --interval ms (keeps keys lit)
 //!     --interval 100..10000   ms between frames (default 500)
+//!   save <RRGGBB|R G B>       VERIFIED colour write + apply + flash save
+//!     --send                  actually send the 3-step sequence via USB
 //!   map                       print the slot -> physical-key hypothesis table
 //!   effect <index>            register block `0x5A 0xAC <index>` (dry run)
 //!     --trace                 send the TRACED-ONLY effect-index write
@@ -14,10 +16,13 @@
 //! `--send`/`--trace` are the only paths that touch the device. Everything
 //! else is offline. The `effect` command is firmware-traced but NOT visually
 //! verified: sending it requires an observer and explicit `--trace`.
+//! `save` writes flash — verify the staged colour on the keys before
+//! letting it save (the sequence is the user-verified 2026-09-24 POC).
 
 use hidra::{Hidra, MaybeFuture, Nusb};
 use hidra_probe::{
-    predict_key, EffectIndexWrite, MatrixFrame, Rgb, INTERFACE, MATRIX_SLOTS, PID, VID,
+    predict_key, ApplyFrame, EffectIndexWrite, MatrixFrame, PerKeyColorFrame, Rgb, SaveFlashFrame,
+    INTERFACE, MATRIX_SLOTS, PID, VID,
 };
 use std::error::Error;
 use std::time::Duration;
@@ -30,6 +35,10 @@ enum Command {
         repeat: usize,
         interval_ms: u64,
     },
+    Save {
+        color: Rgb,
+        send: bool,
+    },
     Map,
     Effect {
         index: u8,
@@ -41,6 +50,7 @@ fn parse() -> Result<Command, String> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.as_slice() {
         [sub, rest @ ..] if sub == "matrix" => parse_matrix(rest),
+        [sub, rest @ ..] if sub == "save" => parse_save(rest),
         [sub] if sub == "map" => Ok(Command::Map),
         [sub, rest @ ..] if sub == "effect" => parse_effect(rest),
         _ => Err(usage()),
@@ -100,6 +110,44 @@ fn parse_matrix(rest: &[String]) -> Result<Command, String> {
     })
 }
 
+fn parse_save(rest: &[String]) -> Result<Command, String> {
+    let mut send = false;
+    let mut color: Option<Rgb> = None;
+    let mut it = rest.iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--send" => send = true,
+            other => {
+                let byte = |s: &str| u8::from_str_radix(s.trim_start_matches("0x"), 16);
+                if color.is_some() {
+                    return Err(format!("unexpected extra argument: {other}"));
+                }
+                if other.len() == 6 && other.chars().all(|c| c.is_ascii_hexdigit()) {
+                    // single RRGGBB hex argument
+                    color = Some(Rgb::new(
+                        byte(&other[0..2]).map_err(|_| "bad red byte")?,
+                        byte(&other[2..4]).map_err(|_| "bad green byte")?,
+                        byte(&other[4..6]).map_err(|_| "bad blue byte")?,
+                    ));
+                } else {
+                    // three separate hex bytes: R G B
+                    let r = byte(other).map_err(|_| format!("bad red byte: {other}"))?;
+                    let g = byte(
+                        it.next()
+                            .ok_or("colour needs G and B bytes (or one RRGGBB)")?,
+                    )
+                    .map_err(|_| "bad green byte")?;
+                    let b = byte(it.next().ok_or("colour needs a B byte")?)
+                        .map_err(|_| "bad blue byte")?;
+                    color = Some(Rgb::new(r, g, b));
+                }
+            }
+        }
+    }
+    let color = color.ok_or("save requires a colour (RRGGBB or R G B hex)")?;
+    Ok(Command::Save { color, send })
+}
+
 fn parse_effect(rest: &[String]) -> Result<Command, String> {
     let mut index = None;
     let mut trace = false;
@@ -126,6 +174,7 @@ fn usage() -> String {
 usage:
   k75 matrix baseline [--send [--repeat 1..20] [--interval 100..10000]]
   k75 matrix slot <0..125> [--send [--repeat 1..20] [--interval 100..10000]]
+  k75 save <RRGGBB | R G B> [--send]
   k75 effect <0..0x13> [--trace]
 "
     .to_string()
@@ -149,6 +198,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             repeat,
             interval_ms,
         } => run_matrix(highlight, send, repeat, interval_ms).await?,
+        Command::Save { color, send } => run_save(color, send).await?,
         Command::Map => run_map()?,
         Command::Effect { index, trace } => run_effect(index, trace).await?,
     }
@@ -239,6 +289,68 @@ async fn run_matrix(
     println!(
         "note: this command is transient (~2 s per frame); repeat keeps keys lit while streaming (interval {interval_ms} ms)."
     );
+    Ok(())
+}
+
+async fn run_save(color: Rgb, send: bool) -> Result<(), Box<dyn Error>> {
+    let write = PerKeyColorFrame::new(color);
+    let apply = ApplyFrame::new();
+    let save = SaveFlashFrame::new();
+
+    println!("verified colour write + apply + flash save (2026-09-24 POC):");
+    println!("  colour #{:02x}{:02x}{:02x}", color.r, color.g, color.b);
+    println!("  1) cmd 0x0a per-key write  (uniform fill, 172 RGB triples)");
+    println!("  2) cmd 0x0b apply           (-> PWM)");
+    println!("  3) cmd 0x06 flash save      (op 0x56 commit, ~380 B)");
+    println!("  first 16 bytes: {:02x?}", &write.as_bytes()[..16]);
+
+    if !send {
+        println!("dry run (no USB access). add --send to write and save.");
+        return Ok(());
+    }
+
+    let api = open_device()?;
+    let path = api
+        .device_list()
+        .find(|i| {
+            i.vendor_id() == VID && i.product_id() == PID && i.interface_number() == INTERFACE
+        })
+        .ok_or("K75 interface 1 not found")?
+        .path()
+        .to_string();
+    let dev = api.open_path(&path).wait()?;
+
+    println!("1) per-key write -> ",);
+    tokio::time::timeout(
+        Duration::from_secs(3),
+        dev.send_feature_report(write.as_bytes()),
+    )
+    .await??;
+    println!("ACK");
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    println!("2) apply -> ");
+    tokio::time::timeout(
+        Duration::from_secs(3),
+        dev.send_feature_report(apply.as_bytes()),
+    )
+    .await??;
+    println!("ACK");
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    println!("3) flash save -> ");
+    tokio::time::timeout(
+        Duration::from_secs(3),
+        dev.send_feature_report(save.as_bytes()),
+    )
+    .await??;
+    println!("ACK");
+    tokio::time::sleep(Duration::from_millis(800)).await;
+    println!(
+        "DONE. Keys should now be {:02x}{:02x}{:02x}.",
+        color.r, color.g, color.b
+    );
+    println!("Verify persistence: unplug/replug, and check 2.4 GHz mode too.");
     Ok(())
 }
 

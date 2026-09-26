@@ -128,6 +128,97 @@ impl MatrixFrame {
     }
 }
 
+/// Command byte for the per-key colour write (report offset 1).
+pub const CMD_PERKEY_WRITE: u8 = 0x0a;
+/// Command byte for the apply step (report offset 1).
+pub const CMD_APPLY: u8 = 0x0b;
+/// Command byte for the flash save (report offset 1).
+pub const CMD_SAVE: u8 = 0x06;
+
+/// Payload length for the `0x0a`/`0x0b`/`0x06` frames (after the report ID).
+pub const COLOR_PAYLOAD_LEN: usize = 519;
+
+/// A verified per-key colour-write frame (report `0x09`, command `0x0a`).
+///
+/// **Visually verified** (2026-09-24): a uniform fill changed the keys to that
+/// colour, and the companion [`ApplyFrame`] + [`SaveFlashFrame`] sequence
+/// persisted it across unplug/replug **and 2.4 GHz wireless mode**.
+///
+/// Layout matches the verified sequence: report ID `0x09`, command `0x0a` at
+/// report offset 1, RGB triples from report offset 2 to the end of the
+/// 519-byte payload. Only the **uniform fill** is verified; per-key
+/// pattern placement within this frame's table (stride 0x12 = 18/row,
+/// `fcn.00007108`) is traced but not visually confirmed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PerKeyColorFrame {
+    bytes: [u8; REPORT_LEN],
+}
+
+impl PerKeyColorFrame {
+    /// Uniform fill with `color`, exactly as the verified live sequence did.
+    pub fn new(color: Rgb) -> Self {
+        let mut bytes = [0u8; REPORT_LEN];
+        bytes[0] = REPORT_ID;
+        bytes[1] = CMD_PERKEY_WRITE;
+        let mut i = 2usize;
+        while i + 2 < COLOR_PAYLOAD_LEN + 1 {
+            bytes[i] = color.r;
+            bytes[i + 1] = color.g;
+            bytes[i + 2] = color.b;
+            i += 3;
+        }
+        PerKeyColorFrame { bytes }
+    }
+
+    pub fn as_bytes(&self) -> &[u8; REPORT_LEN] {
+        &self.bytes
+    }
+}
+
+/// The verified apply frame (report `0x09`, command `0x0b`).
+///
+/// Applies the staged per-key table (`0x7b40` -> `fcn.000029cd` -> PWM).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ApplyFrame {
+    bytes: [u8; REPORT_LEN],
+}
+
+impl ApplyFrame {
+    pub fn new() -> Self {
+        let mut bytes = [0u8; REPORT_LEN];
+        bytes[0] = REPORT_ID;
+        bytes[1] = CMD_APPLY;
+        ApplyFrame { bytes }
+    }
+
+    pub fn as_bytes(&self) -> &[u8; REPORT_LEN] {
+        &self.bytes
+    }
+}
+
+/// The verified flash-save frame (report `0x09`, command `0x06`).
+///
+/// Commits the current lighting config to flash (`fcn.00007393`, op `0x56`,
+/// ~380 B commit). Persistence across replug and wireless mode was observed
+/// live. Save only after visually verifying the staged state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SaveFlashFrame {
+    bytes: [u8; REPORT_LEN],
+}
+
+impl SaveFlashFrame {
+    pub fn new() -> Self {
+        let mut bytes = [0u8; REPORT_LEN];
+        bytes[0] = REPORT_ID;
+        bytes[1] = CMD_SAVE;
+        SaveFlashFrame { bytes }
+    }
+
+    pub fn as_bytes(&self) -> &[u8; REPORT_LEN] {
+        &self.bytes
+    }
+}
+
 /// A traced-but-unverified register-block write (effect index).
 ///
 /// This is the `0x5A 0xAC <idx>` block documented in
@@ -270,7 +361,22 @@ pub fn predict_key(slot: usize) -> Option<&'static str> {
 }
 
 /// Verified host-slot → physical-key pins (from live observations).
-pub const VERIFIED_SLOTS: &[(usize, &str)] = &[(0, "Esc"), (63, ";")];
+pub const VERIFIED_SLOTS: &[(usize, &str)] = &[
+    (0, "Esc"),
+    (7, "1"),
+    (10, "\\|"),
+    (14, "W"),
+    (27, "F"),
+    (30, "F4"),
+    (34, "V"),
+    (35, "Space"),
+    (51, "K"),
+    (55, "9"),
+    (56, "O"),
+    (63, ";"),
+    (84, "Delete"),
+    (95, "Right"),
+];
 
 #[cfg(test)]
 mod tests {
@@ -307,6 +413,31 @@ mod tests {
     fn out_of_range_slot_rejected() {
         assert!(MatrixFrame::new(Rgb::RED, Some((MATRIX_SLOTS, Rgb::GREEN))).is_none());
         assert!(MatrixFrame::new(Rgb::RED, Some((MATRIX_SLOTS, Rgb::GREEN))).is_none());
+    }
+
+    #[test]
+    fn save_sequence_frame_shapes() {
+        // uniform red fill, exactly like the verified live sequence
+        let write = PerKeyColorFrame::new(Rgb::RED);
+        let bytes = write.as_bytes();
+        assert_eq!(bytes[0], 0x09);
+        assert_eq!(bytes[1], 0x0a);
+        // 172 RGB triples at report offsets 2..517, tail zeros
+        assert_eq!(bytes[2], 0xff);
+        assert_eq!(bytes[3], 0x00);
+        assert_eq!(bytes[4], 0x00);
+        assert_eq!(bytes[2..518].len(), 516);
+        assert_eq!(bytes[2..518].chunks_exact(3).count(), 172);
+        assert!(bytes[2..518].chunks_exact(3).all(|c| c == [0xff, 0, 0]));
+        assert!(bytes[518..].iter().all(|b| *b == 0));
+
+        let apply = ApplyFrame::new();
+        assert_eq!(&apply.as_bytes()[..2], &[0x09, 0x0b]);
+        assert!(apply.as_bytes()[2..].iter().all(|b| *b == 0));
+
+        let save = SaveFlashFrame::new();
+        assert_eq!(&save.as_bytes()[..2], &[0x09, 0x06]);
+        assert!(save.as_bytes()[2..].iter().all(|b| *b == 0));
     }
 
     #[test]
