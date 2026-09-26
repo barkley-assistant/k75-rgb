@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """build_tests.py — regenerate every config image for test batch 2.
 
-All images derive from analysis/config-default-72.bin (factory-verbatim
-72-byte profile) by patching single bytes at instruction-verified
-config-load offsets:
+All images derive from analysis/config-dumps/config-default-72.bin
+(factory-verbatim 72-byte profile) by patching single bytes at
+instruction-verified config-load offsets:
 
   +0x0E -> 0x0CC8  wave SPEED param (0x25 slowest .. 0x55 fastest)
   +0x1B -> 0x0F82  effect param -> [0x0F22] = value - 1 (flag byte source)
@@ -13,7 +13,8 @@ config-load offsets:
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT = os.path.join(HERE, "config-default-72.bin")
+DUMP_DIR = os.path.join(HERE, "config-dumps")
+DEFAULT = os.path.join(DUMP_DIR, "config-default-72.bin")
 
 def build(name, patches):
     data = bytearray(open(DEFAULT, "rb").read())
@@ -21,7 +22,7 @@ def build(name, patches):
     for off, val in patches.items():
         assert 0 <= off < 72
         data[off] = val
-    path = os.path.join(HERE, name)
+    path = os.path.join(DUMP_DIR, name)
     open(path, "wb").write(data)
     print(f"  {name}: " + " ".join(f"+{off:02X}={val:02X}" for off, val in patches.items()))
 
