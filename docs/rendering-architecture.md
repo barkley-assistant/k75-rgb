@@ -106,6 +106,27 @@ persistence target. `0x0F87` is the solid-colour **colour index** (0..0x13,
 wraps at 0x14); `0x0F9B`/`0x0F9F` are the case-light effect/colour state,
 also touched by the Fn keys.
 
+### Countdown expiry and the persistence flag (both now traced)
+
+- **Expiry is unconditional.** `0x35BB` decrements `0x0F59` every scheduler
+  tick; when it hits zero `0x35C6` sets `0x23.6` and force-loads
+  `0x0F83 = CODE[0xA40A + 0] = 0x01` — the factory wave. This is the exact
+  ~2 s snap-back: every fresh `0x08` send arms `0x0F59 = 0xFA`
+  (`0x5BEC`, reached from **both** mode branches of `0x5AF8`), and expiry
+  then discards whatever effect Fn+Tab had selected.
+- **Selecting effect `0x13` arms persistence.** The effect-change handler at
+  `0x49B9` writes **`0x0C4D = 0x69`** when the new effect code is `0x13`
+  and `0x0C4D == 0` (and clears it when leaving the effect). `0x2dac` —
+  the custom/static-matrix renderer — requires exactly `0x0C4D == 0x69`
+  (plus the `0x0377:0x0378` vs `0x08F1:0x08F2` size gate) to render `0x0379`
+  continuously.
+- **Therefore the persistence recipe is:** stage the matrix via the verified
+  `0x08` command (RAM `0x0379` survives until overwritten), then select
+  effect `0x13` (last Fn+Tab stop). The scheduler's effect dispatch
+  (`0x77C4` → `0x2DAC`) then renders the staged matrix continuously with no
+  countdown. This is the leading live-test hypothesis — see
+  [test-plan-3.md](test-plan-3.md).
+
 Note: `0x0F3F` (the register-block target) is a **separate** register from
 `0x0F83`. The exact `0x0F3F → 0x0F83` translation remains unproven and is the
 one link still needing a live test.

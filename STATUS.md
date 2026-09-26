@@ -45,12 +45,13 @@ Read the [protocol audit](docs/protocol-audit.md) before running an old probe.
   complete baseline reports with only one differing slot per observation.
 - Find a safely reachable sustained/static mode, or use a deliberate bounded
   host refresh policy; sending one frame does not persist the effect.
-  **Persistent colour is now traced to a mechanism**: effect code
-  `0x0F83=0x13` + flag `0x0C4D=0x69` renders the custom matrix continuously.
-  The host-reachable lever is the `0x1130` register block `[0x5A, 0xAC,
-  <effect_index>] -> 0x0F3F` (cmd `0xAC`). The remaining unproven link is the
-  exact `0x0F3F -> 0x0F83` mapping and whether it arms `0x0C4D`. See
-  [rendering-architecture.md](docs/rendering-architecture.md).
+  **Persistence is now traced end to end**: effect code `0x0F83=0x13` +
+  flag `0x0C4D=0x69` renders the custom matrix continuously, and selecting
+  effect `0x13` (last Fn+Tab stop) arms `0x0C4D=0x69` (`0x49B9`). The
+  countdown expiry (`0x35C6`) unconditionally resets `0x0F83` to `0x01`, so
+  the live recipe is: send the matrix, then Fn+Tab to the last effect. See
+  [rendering-architecture.md](docs/rendering-architecture.md) and
+  [test-plan-3.md](docs/test-plan-3.md).
 - Side/case light output path and an isolated command for it. A temporary
   white/ice-blue observation was not attributable to a single packet; the
   matrix tests left the case rainbow. **Firmware trace now shows the case

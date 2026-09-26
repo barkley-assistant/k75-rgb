@@ -33,12 +33,16 @@ cargo build --release --bin matrix08 --bin get09_readonly
 # matrix frames (verified path)
 ./target/release/matrix08 matrix baseline                 # offline preview
 ./target/release/matrix08 matrix slot 63                  # offline preview
+./target/release/matrix08 map                             # slot -> key hypothesis table
 sudo ./target/release/matrix08 matrix baseline --send     # send (transient)
 sudo ./target/release/matrix08 matrix slot 63 --send --repeat 16
 
 # traced-only effect-index register block (does NOT send; see below)
 ./target/release/matrix08 effect 0x13
 ```
+
+The next live test batch (key-map completion, Fn+Tab effect map, and the
+persistence recipe) is scripted in [docs/test-plan-3.md](docs/test-plan-3.md).
 
 The protocol core now lives in `src/lib.rs` — a `#![forbid(unsafe_code)]`
 library encoding the verified matrix-frame format and the traced effect-index

@@ -6,6 +6,7 @@
 //!   matrix slot <0..125>      highlight one slot green against red (dry run)
 //!     --send                  actually send via USB
 //!     --repeat 1..20          resend at 500 ms (keeps keys lit; still transient)
+//!   map                       print the slot -> physical-key hypothesis table
 //!   effect <index>            register block `0x5A 0xAC <index>` (dry run)
 //!     --trace                 send the TRACED-ONLY effect-index write
 //!
@@ -14,7 +15,9 @@
 //! verified: sending it requires an observer and explicit `--trace`.
 
 use hidra::{Hidra, MaybeFuture, Nusb};
-use hidra_probe::{EffectIndexWrite, MatrixFrame, Rgb, INTERFACE, MATRIX_SLOTS, PID, VID};
+use hidra_probe::{
+    predict_key, EffectIndexWrite, MatrixFrame, Rgb, INTERFACE, MATRIX_SLOTS, PID, VID,
+};
 use std::error::Error;
 use std::time::Duration;
 
@@ -25,6 +28,7 @@ enum Command {
         send: bool,
         repeat: usize,
     },
+    Map,
     Effect {
         index: u8,
         trace: bool,
@@ -35,6 +39,7 @@ fn parse() -> Result<Command, String> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.as_slice() {
         [sub, rest @ ..] if sub == "matrix" => parse_matrix(rest),
+        [sub] if sub == "map" => Ok(Command::Map),
         [sub, rest @ ..] if sub == "effect" => parse_effect(rest),
         _ => Err(usage()),
     }
@@ -129,8 +134,35 @@ async fn main() -> Result<(), Box<dyn Error>> {
             send,
             repeat,
         } => run_matrix(highlight, send, repeat).await?,
+        Command::Map => run_map()?,
         Command::Effect { index, trace } => run_effect(index, trace).await?,
     }
+    Ok(())
+}
+
+fn run_map() -> Result<(), Box<dyn Error>> {
+    println!("slot -> physical key (hypothesis: host slot = vendor LED ID)");
+    println!("verified live: 0 -> Esc, 63 -> ';'  |  everything else unverified");
+    println!("{}", "-".repeat(46));
+    for slot in 0..MATRIX_SLOTS {
+        let kind = if slot < 96 {
+            match predict_key(slot) {
+                Some(key) => key.to_string(),
+                None => "GAP".to_string(),
+            }
+        } else {
+            "NON-KEY".to_string()
+        };
+        let mark = if slot == 0 || slot == 63 {
+            "  <verified"
+        } else {
+            ""
+        };
+        println!("  {slot:>3}  {kind:<10}{mark}");
+    }
+    println!("{}", "-".repeat(46));
+    println!("GAP = structural hole in the 16x6 key grid (no key there)");
+    println!("NON-KEY = slot beyond the vendor table (physical meaning unproven)");
     Ok(())
 }
 
@@ -149,6 +181,11 @@ async fn run_matrix(
     );
     if let Some(slot) = highlight {
         println!("  highlight slot {slot} green against red baseline");
+        match predict_key(slot) {
+            Some(key) => println!("  predicted key: {key} (unverified unless slot 0 or 63)"),
+            None if slot < 96 => println!("  predicted: GAP (no key at this position)"),
+            None => println!("  predicted: NON-KEY slot (outside vendor table)"),
+        }
     } else {
         println!("  uniform red baseline");
     }

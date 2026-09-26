@@ -14,11 +14,11 @@ the source of truth. The earlier live-test plan is [retired](test-plan-2.md).
    against a red baseline.
 2. **Characterize transient rendering.** The `0x0F59=0xFA` countdown is now
    fully explained — see [rendering-architecture.md](rendering-architecture.md).
-   Persistent colour requires effect `0x0F83=0x13` (custom/static matrix) +
-   `0x0C4D=0x69`; the remaining blocker is finding a host-reachable write into
-   `0x0F83`/`0x0C4D` (candidates: config path `profile +0x1F -> 0x0F54`, or the
-   `0x1130` register block `[0x5A, 0xAC, <index>] -> 0x0F3F`). Bounded streaming
-   is the proven fallback.
+   Expiry force-loads effect `0x01` (`0x35C6`); selecting effect `0x13` arms
+   the persistence flag `0x0C4D=0x69` (`0x49B9`). The live persistence recipe
+   (stage matrix, then Fn+Tab to the last effect) is the headline test of
+   [test-plan-3.md](test-plan-3.md). Bounded streaming remains the proven
+   fallback.
 3. **Trace the case output separately.** It stayed rainbow through all of
    the `0x08` key-matrix tests. Firmware trace shows it is a separate animation
    engine on `0x0F99..0x0F9F` with no live-USB writer; it is config-driven via

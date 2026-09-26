@@ -155,6 +155,123 @@ impl EffectIndexWrite {
     }
 }
 
+/// Vendor LED-ID → physical key table, extracted from the official `KB.ini`
+/// `[KEY]` section (see `analysis/key-led-map.txt`).
+///
+/// Index = LED ID, value = physical key legend. `None` = structural gap in
+/// the 16×6 physical grid (no key/LED at that position). IDs 96..125 fall
+/// outside the vendor table entirely (the firmware matrix is 21×6 = 126
+/// slots); those are non-key slots whose physical meaning is unproven.
+///
+/// Only two host-matrix slots have been **visually verified**: slot 0 → Esc
+/// and slot 63 → UK `;`. The rest of this table is a hypothesis for the host
+/// slot mapping ("host slot = vendor LED ID"), confirmed at those two points.
+pub const KEY_LED_MAP: [Option<&str>; 96] = {
+    // Filled via helper const fn below.
+    let mut map: [Option<&str>; 96] = [None; 96];
+    let entries: &[(usize, &str)] = &[
+        (0, "Esc"),
+        (12, "F1"),
+        (18, "F2"),
+        (24, "F3"),
+        (30, "F4"),
+        (36, "F5"),
+        (42, "F6"),
+        (48, "F7"),
+        (54, "F8"),
+        (60, "F9"),
+        (66, "F10"),
+        (72, "F11"),
+        (78, "F12"),
+        (1, "`"),
+        (7, "1"),
+        (13, "2"),
+        (19, "3"),
+        (25, "4"),
+        (31, "5"),
+        (37, "6"),
+        (43, "7"),
+        (49, "8"),
+        (55, "9"),
+        (61, "0"),
+        (67, "-"),
+        (73, "="),
+        (79, "Backspace"),
+        (91, "Home"),
+        (2, "Tab"),
+        (8, "Q"),
+        (14, "W"),
+        (20, "E"),
+        (26, "R"),
+        (32, "T"),
+        (38, "Y"),
+        (44, "U"),
+        (50, "I"),
+        (56, "O"),
+        (62, "P"),
+        (68, "["),
+        (74, "]"),
+        (75, "\\"),
+        (92, "PgUp"),
+        (3, "CapsLock"),
+        (9, "A"),
+        (15, "S"),
+        (21, "D"),
+        (27, "F"),
+        (33, "G"),
+        (39, "H"),
+        (45, "J"),
+        (51, "K"),
+        (57, "L"),
+        (63, ";"),
+        (69, "'"),
+        (81, "Enter"),
+        (93, "PgDn"),
+        (4, "LShift"),
+        (10, "><"),
+        (16, "Z"),
+        (22, "X"),
+        (28, "C"),
+        (34, "V"),
+        (40, "B"),
+        (46, "N"),
+        (52, "M"),
+        (58, ","),
+        (64, "."),
+        (70, "/"),
+        (82, "RShift"),
+        (88, "Up"),
+        (5, "LCtrl"),
+        (11, "LWin"),
+        (17, "LAlt"),
+        (35, "Space"),
+        (53, "RAlt"),
+        (59, "FN"),
+        (83, "Left"),
+        (89, "Down"),
+        (95, "Right"),
+        (84, "Delete"),
+        (90, "Mute"),
+    ];
+    let mut i = 0;
+    while i < entries.len() {
+        map[entries[i].0] = Some(entries[i].1);
+        i += 1;
+    }
+    map
+};
+
+/// Predict the physical key for a host matrix slot under the leading
+/// hypothesis "host slot = vendor LED ID".
+///
+/// Returns `None` for slots outside the vendor table (gap or non-key slot).
+pub fn predict_key(slot: usize) -> Option<&'static str> {
+    KEY_LED_MAP.get(slot).copied().flatten()
+}
+
+/// Verified host-slot → physical-key pins (from live observations).
+pub const VERIFIED_SLOTS: &[(usize, &str)] = &[(0, "Esc"), (63, ";")];
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -199,5 +316,27 @@ mod tests {
         assert_eq!(block[1], 0xAC);
         assert_eq!(block[2], 0x13);
         assert!(block[3..].iter().all(|b| *b == 0));
+    }
+
+    #[test]
+    fn vendor_table_pins_and_gaps() {
+        assert_eq!(predict_key(0), Some("Esc"));
+        assert_eq!(predict_key(63), Some(";"));
+        assert_eq!(predict_key(30), Some("F4"));
+        assert_eq!(predict_key(95), Some("Right"));
+        assert_eq!(predict_key(90), Some("Mute"));
+        // structural gaps in the 16x6 grid
+        assert_eq!(predict_key(6), None); // (1,0) no key
+        assert_eq!(predict_key(76), None); // (12,4) no key
+                                           // non-key slots beyond the vendor table
+        assert_eq!(predict_key(96), None);
+        assert_eq!(predict_key(125), None);
+        // count check: 82 vendor entries
+        let count = KEY_LED_MAP.iter().filter(|k| k.is_some()).count();
+        assert_eq!(count, 82);
+        // verified pins agree with the vendor table
+        for &(slot, name) in VERIFIED_SLOTS {
+            assert_eq!(predict_key(slot), Some(name));
+        }
     }
 }
