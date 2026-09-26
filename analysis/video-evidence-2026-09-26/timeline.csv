@@ -1,0 +1,44 @@
+kind,stage,timestamp_s,frame,first_clear_s,first_clear_frame,next_change_s,left,middle,right,sample_frame,sample_timestamp_s,image,notes
+held_pattern,1,0.0042,0,0.0042,0,0.436667,Turquoise / cyan,Cyan-blue,Violet / purple,13,0.220433,frames/frame_0013_00.220433s.jpg,Settled appearance after this transition; held until the next change.
+held_pattern,2,0.436667,26,0.4533,27,0.968889,Magenta / pink,Red-orange,"Yellow, slightly lime at the tip",41,0.702778,frames/frame_0041_00.702778s.jpg,Settled appearance after this transition; held until the next change.
+single_frame_transition,,0.436667,26,,,,Pale lavender / white,Red-orange,Yellow-lime,26,0.436667,frames/frame_0026_00.436667s.jpg,One captured pale/mixed boundary frame; not a confirmed extra commanded state.
+held_pattern,3,0.968889,56,0.968889,56,1.484511,Green / mint,Cyan,Blue,71,1.251644,frames/frame_0071_01.251644s.jpg,Settled appearance after this transition; held until the next change.
+held_pattern,4,1.484511,85,1.501144,86,2.016778,Violet / purple,Magenta / hot pink,Orange,101,1.750644,frames/frame_0101_01.750644s.jpg,Settled appearance after this transition; held until the next change.
+single_frame_transition,,1.484511,85,,,,Pale cyan / white,Pale cyan,Blue,85,1.484511,frames/frame_0085_01.484511s.jpg,One captured pale/mixed boundary frame; not a confirmed extra commanded state.
+held_pattern,5,2.016778,117,2.033411,118,2.549044,Lime / yellow-green,Green-turquoise,Cyan,133,2.282911,frames/frame_0133_02.282911s.jpg,Settled appearance after this transition; held until the next change.
+single_frame_transition,,2.016778,117,,,,Pale cyan-green,Pale green / mint,Pale whitish / grey-lilac,117,2.016778,frames/frame_0117_02.016778s.jpg,One captured pale/mixed boundary frame; not a confirmed extra commanded state.
+held_pattern,6,2.549044,149,2.549044,149,3.081311,Blue,Purple-magenta,Pink-red,165,2.815178,frames/frame_0165_02.815178s.jpg,Settled appearance after this transition; held until the next change.
+held_pattern,7,3.081311,181,3.081311,181,3.596944,Yellow,Green,Turquoise / teal,197,3.347444,frames/frame_0197_03.347444s.jpg,Settled appearance after this transition; held until the next change.
+held_pattern,8,3.596944,212,3.613578,213,4.129111,Cyan-blue,Blue-violet,Magenta,227,3.846244,frames/frame_0227_03.846244s.jpg,Settled appearance after this transition; held until the next change.
+single_frame_transition,,3.596944,212,,,,White / pale cyan,Cyan-turquoise,Green-turquoise,212,3.596944,frames/frame_0212_03.596944s.jpg,One captured pale/mixed boundary frame; not a confirmed extra commanded state.
+held_pattern,9,4.129111,242,4.145756,243,4.661333,Red-orange / orange,Yellow-lime,Green,258,4.395211,frames/frame_0258_04.395211s.jpg,Settled appearance after this transition; held until the next change.
+single_frame_transition,,4.129111,242,,,,Salmon / orange,Whitish pale green,Pale green / mint,242,4.129111,frames/frame_0242_04.129111s.jpg,One captured pale/mixed boundary frame; not a confirmed extra commanded state.
+held_pattern,10,4.661333,274,4.677889,275,5.193567,Cyan,Blue / cyan-blue,Purple,290,4.927444,frames/frame_0290_04.927444s.jpg,Settled appearance after this transition; held until the next change.
+single_frame_transition,,4.661333,274,,,,Cyan,Cyan-blue,Whitish blue / lavender,274,4.661333,frames/frame_0274_04.661333s.jpg,One captured pale/mixed boundary frame; not a confirmed extra commanded state.
+held_pattern,11,5.193567,306,5.193567,306,5.725778,Pink-magenta,Orange / amber,Yellow-lime,322,5.459744,frames/frame_0322_05.459744s.jpg,Settled appearance after this transition; held until the next change.
+held_pattern,12,5.725778,338,5.725778,338,6.241411,Green-turquoise,Cyan,Blue / blue-violet,352,5.991911,frames/frame_0352_05.991911s.jpg,Settled appearance after this transition; held until the next change.
+held_pattern,13,6.241411,367,6.258044,368,6.773644,Purple-magenta,Pink-red,Yellow-orange,382,6.507511,frames/frame_0382_06.507511s.jpg,Settled appearance after this transition; held until the next change.
+single_frame_transition,,6.241411,367,,,,Icy cyan / white,Pale blue,Pale violet,367,6.241411,frames/frame_0367_06.241411s.jpg,One captured pale/mixed boundary frame; not a confirmed extra commanded state.
+held_pattern,14,6.773644,398,6.773644,398,7.305911,Green,Turquoise-cyan,Cyan-blue,414,7.039778,frames/frame_0414_07.039778s.jpg,Settled appearance after this transition; held until the next change.
+held_pattern,15,7.305911,430,7.305911,430,7.821544,Blue-violet,Magenta,Red / pink-red,446,7.572044,frames/frame_0446_07.572044s.jpg,Settled appearance after this transition; held until the next change.
+held_pattern,16,7.821544,461,7.838178,462,8.353711,Yellow-green,Green,Cyan / turquoise,476,8.104222,frames/frame_0476_08.104222s.jpg,Settled appearance after this transition; held until the next change.
+single_frame_transition,,7.821544,461,,,,Icy blue-white,Pale lavender-white,Peach-white,461,7.821544,frames/frame_0461_07.821544s.jpg,One captured pale/mixed boundary frame; not a confirmed extra commanded state.
+held_pattern,17,8.353711,490,8.370344,491,8.885956,Blue,Violet / purple,Magenta / hot pink,505,8.619833,frames/frame_0505_08.619833s.jpg,Settled appearance after this transition; held until the next change.
+single_frame_transition,,8.353711,490,,,,Pale blue-white,Cyan,Pale cyan-white,490,8.353711,frames/frame_0490_08.353711s.jpg,One captured pale/mixed boundary frame; not a confirmed extra commanded state.
+held_pattern,18,8.885956,520,8.902589,521,9.4182,Amber / orange-yellow,Yellow-green,Green,535,9.152078,frames/frame_0535_09.152078s.jpg,Settled appearance after this transition; held until the next change.
+single_frame_transition,,8.885956,520,,,,Orange-yellow,Yellow-green,Pale green / cyan,520,8.885956,frames/frame_0520_08.885956s.jpg,One captured pale/mixed boundary frame; not a confirmed extra commanded state.
+held_pattern,19,9.4182,550,9.4182,550,14.424633,Cyan,Blue,Purple-magenta,698,11.979633,frames/frame_0698_11.979633s.jpg,Settled appearance after this transition; held until the next change.
+single_frame_transition,,14.424633,845,,,,Icy cyan / white,Blue,Purple-magenta,845,14.424633,frames/frame_0845_14.424633s.jpg,One captured pale/mixed boundary frame; not a confirmed extra commanded state.
+animation_sample,,14.441267,846,,,,Pink-magenta,Orange / amber,Yellow-lime,846,14.441267,frames/frame_0846_14.441267s.jpg,"Snapshot during continuous motion, not a separate held setting."
+animation_sample,,14.541067,852,,,,Magenta,Red-orange,Yellow,852,14.541067,frames/frame_0852_14.541067s.jpg,"Snapshot during continuous motion, not a separate held setting."
+animation_sample,,14.640867,858,,,,Purple-magenta,Pink-red,Yellow-orange,858,14.640867,frames/frame_0858_14.640867s.jpg,"Snapshot during continuous motion, not a separate held setting."
+animation_sample,,14.740667,864,,,,Violet / purple,Hot pink,Orange,864,14.740667,frames/frame_0864_14.740667s.jpg,"Snapshot during continuous motion, not a separate held setting."
+animation_sample,,14.840467,870,,,,Blue-violet,Magenta,Red-orange,870,14.840467,frames/frame_0870_14.840467s.jpg,"Snapshot during continuous motion, not a separate held setting."
+animation_sample,,14.940267,876,,,,Blue,Purple-magenta,Pink-red,876,14.940267,frames/frame_0876_14.940267s.jpg,"Snapshot during continuous motion, not a separate held setting."
+animation_sample,,15.040067,882,,,,Blue / cyan-blue,Violet-magenta,Magenta / pink,882,15.040067,frames/frame_0882_15.040067s.jpg,"Snapshot during continuous motion, not a separate held setting."
+animation_sample,,15.139867,888,,,,Cyan-blue,Violet,Magenta,888,15.139867,frames/frame_0888_15.139867s.jpg,"Snapshot during continuous motion, not a separate held setting."
+animation_sample,,15.239667,894,,,,Cyan,Blue-violet,Purple-magenta,894,15.239667,frames/frame_0894_15.239667s.jpg,"Snapshot during continuous motion, not a separate held setting."
+animation_sample,,15.339467,900,,,,Cyan,Blue,Violet / purple,900,15.339467,frames/frame_0900_15.339467s.jpg,"Snapshot during continuous motion, not a separate held setting."
+animation_sample,,15.439267,906,,,,Turquoise / cyan,Cyan-blue,Blue-violet,906,15.439267,frames/frame_0906_15.439267s.jpg,"Snapshot during continuous motion, not a separate held setting."
+animation_sample,,15.539067,912,,,,Green-turquoise,Cyan,Blue,912,15.539067,frames/frame_0912_15.539067s.jpg,"Snapshot during continuous motion, not a separate held setting."
+animation_sample,,15.672133,920,,,,Green-turquoise,Cyan,Blue,920,15.672133,frames/frame_0920_15.672133s.jpg,"Snapshot during continuous motion, not a separate held setting."

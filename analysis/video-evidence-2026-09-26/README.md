@@ -81,11 +81,19 @@ live walk than to 19.
 
 ## Files
 
-- `README.md` — full analysis report (held patterns, boundary frames,
-  methodology, caveats)
+- `README.md` — cross-reference and reconciliation (this file)
+- `report.md` — full original vision-agent analysis (held patterns,
+  boundary frames, methodology, caveats)
 - `timeline.json` — machine-readable held patterns + sampled observations
 - `all_frames_camera_samples.csv` — per-frame camera RGB/hue at 128 sample
   positions (left/middle/right medians)
-- Raw frames (921 JPEG crops, ~58 MB) kept out of the repo; available
-  locally at `/home/agent/.hermes/cache/scratch/k75_video/keyboard_led_evidence/frames/`
-  and in the source archive `keyboard_led_all_frames.zip`.
+- `frames/` — all 921 decoded crops (JPEG, ~58 MB) so `index.html` works
+  from a fresh clone
+- `index.html` — offline frame viewer with slider + arrow keys; phase
+  labels describe the nearby held appearance
+- `keyboard_led_held_patterns.jpg`, `keyboard_led_transition_frames.jpg`,
+  `keyboard_led_final_animation.jpg` — composite palette sheets
+- `manifest.json`, `timeline.csv` — full machine-readable frame manifest
+  and timeline
+- The source MP4 is intentionally NOT in the repo (see
+  `report.md` for its SHA-256: `ecb99b618…c86518`).
