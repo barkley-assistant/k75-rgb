@@ -15,9 +15,10 @@ fn checksum(bytes: &[u8]) -> u8 {
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let out_path = args.get(1).cloned().unwrap_or_else(|| {
-        "/home/agent/projects/barkley-assistant/k75-rgb/analysis/led-state.bin".to_string()
-    });
+    let out_path = args
+        .get(1)
+        .cloned()
+        .unwrap_or_else(|| "led-state.bin".to_string());
 
     let mut api = match Hidra::<Nusb>::builder().build() {
         Ok(a) => a,
