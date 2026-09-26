@@ -28,7 +28,7 @@ Critical path: **Test B** (persistent matrix + effect appearance map) →
 | 1.5 | Flash save (cmd `0x06`) | ✅ | 100% — re-verification queued |
 | 1.6 | Save survives replug + 2.4 GHz | ✅ | 100% |
 | 1.7 | Persistent custom matrix (effect `0x13`) | 🔬 | 70% — one live test left |
-| 1.8 | Host effect selection | 🔬 | 40% — carrier unpinned |
+| 1.8 | Host effect selection | 🔬 | 60% — block grammar pinned; arming route + carrier unpinned |
 | 1.9 | Effect appearance map (17 stops) | 🔬 | 50% — key-side walk pending |
 | 1.10 | Brightness (host) | 🔬 | 30% |
 | 1.11 | Speed (host) | 🔬 | 30% |
@@ -41,7 +41,7 @@ Critical path: **Test B** (persistent matrix + effect appearance map) →
 | 2.2 | Case stepping via matrix frames (1 frame = 1 step) | ✅ | 100% |
 | 2.3 | Case cycle map (~19-stage gradient) | 🔬 | 60% — repeatability unproven |
 | 2.4 | Deterministic case positioning (reset + N frames) | ❓ | 0% |
-| 2.5 | Case direct colour write | ❓ | 0% — no writer found yet |
+| 2.5 | Case direct colour write | ⛔ | N/A — case is effect-table driven, no direct host writer exists |
 | 2.6 | Case off (host-controlled) | ❓ | 0% — maybe a cycle stage |
 
 ## Track 3 — Platform & safety

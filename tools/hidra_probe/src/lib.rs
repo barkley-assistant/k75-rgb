@@ -219,7 +219,15 @@ impl SaveFlashFrame {
     }
 }
 
-/// A traced-but-unverified register-block write (effect index).
+/// A traced-but-UNVERIFIED register-block write (effect index).
+///
+/// Grammar pinned in firmware (`fcn.0000bbcd`): block is `0x5A <cmd> <value>`
+/// + 17 bytes padding (20 total); cmd `0xAC` writes `0x1155 = value`, cmd
+/// `0xAA` writes `0x0F3F = value`. The block is assembled byte-stream into
+/// XDATA `0x1130` only while the device is armed (`0x0F3F == 0x22 &&
+/// 0x0F54 == 0x01`); the host-side arming route and the carrier report are
+/// still unpinned, so the CLI refuses to send this. See
+/// `docs/protocol/effect-selection.md`.
 ///
 /// This is the `0x5A 0xAC <idx>` block documented in
 /// `docs/rendering-architecture.md`. It is the candidate persistence lever but

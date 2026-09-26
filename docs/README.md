@@ -19,6 +19,7 @@ Reverse-engineering the proprietary RGB protocol of the RedThunder K75
 | [`protocol/protocol.md`](protocol/protocol.md) | Working USB protocol: reports, command table, verified sequences. |
 | [`protocol/software-protocol.md`](protocol/software-protocol.md) | Vendor-tool protocol decode (official software behaviour). |
 | [`protocol/wireless.md`](protocol/wireless.md) | 2.4 GHz dongle forensics: no live lighting channel — wireless = save-then-replay. |
+| [`protocol/effect-selection.md`](protocol/effect-selection.md) | Host effect selection: `0x5A` block grammar, byte-stream assembler, arming precondition, "AH"/"AZ" channel. |
 | [`protocol/config-region.md`](protocol/config-region.md) | The 72-byte config profile: confirmed offsets, hypotheses, live results. |
 
 ## Firmware internals

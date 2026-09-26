@@ -17,7 +17,7 @@ Last updated 2026-09-26 (post experiment A). Statuses:
 | Direct matrix display (126 slots) | **VERIFIED** | report `0x09` cmd `0x08`, 520-byte frame, offsets 8..385 | Transient ~2 s; `--repeat` keeps it lit. 15 key slots + 2 gaps + 2 non-key slots verified. |
 | Flash SAVE (persist) | **VERIFIED** | cmd `0x06` → `fcn.00007393` (op 0x56, ~380 B commit, 0xAA magic) | Red survived unplug/replug **and 2.4 GHz wireless mode** (2026-09-24, user-observed). Re-verification with current tooling pending (legacy probes were error-prone). |
 | Persistent custom matrix (effect 0x13 path) | **TRACED** | stage matrix `0x08` + select effect `0x0F83=0x13` → arms `0x0C4D=0x69` → continuous render | First live attempt: keys went OFF at terminal stop, case went breathing. Red-herring re-test queued (test B). |
-| Effect selection (host) | **TRACED** | register block `0x5A 0xAC <idx>` → `0x0F3F`; carrier report unpinned. Alternative: control-transfer channel (wValue high `0x01`/`0x02`) | Fn+Tab does it natively (keyboard-side, 17 real effects). |
+| Effect selection (host) | **TRACED (deeper)** | `0x5A 0xAC <idx>` grammar pinned at `fcn.0000bbcd` (`0x1155=idx`; `0x5A 0xAA <v>` writes `0x0F3F`); block assembles byte-stream into `0x1130` when armed (`0x0F3F==0x22 && 0x0F54==0x01`); arming route + carrier still unpinned. Control-transfer "AH"/"AZ" channel pinned at `0x14A9`; official tool wValue family `0x17FF/0x1600/0x1000/0x0F00/0x1700` found. See `../protocol/effect-selection.md` | Fn+Tab does it natively (keyboard-side, 17 real effects). |
 | Effect code map | **VERIFIED** (via Fn+Tab) | `0x0F83` = effect code 0x00..0x13, skips 0x06/0x0E/0x12 = 17 real effects | Key-side appearance of each stop NOT fully recorded (keys were off during last walk). |
 | Brightness | **TRACED** | `0x0F82`-family, Fn+PgUp path | Fn+PgUp verified natively (off / 7 levels / on). Host write unverified. |
 | Speed | **TRACED** | `0x0CC8` (fed by profile +0x0E) | Fn+←/→ verified natively. Host write unverified. |
@@ -28,7 +28,7 @@ Last updated 2026-09-26 (post experiment A). Statuses:
 |---|---|---|---|
 | Case effect selection | **VERIFIED** (Fn-driven) | Fn+Tab walks 11 case stops: cyan, white, pulse, off, wave, strobe, red, green, blue, yellow, purple | Case sub-state `0x0F9B`, palette `0x0F9F`. |
 | Case animation stepping (host) | **VERIFIED** | `0x08` matrix frame — **1 frame = 1 case animation step** | Frame-synced (experiment A, 2026-09-26). Video shows ~19-stage gradient cycle at 500 ms cadence, hold, then wave. |
-| Case direct colour write | **UNKNOWN** | no host-reachable writer to case registers `0x0F99..0x0F9F` found | Static colour stops reachable via Fn+Tab only; frame-stepping is the host lever. |
+| Case direct colour write | **NOT FOUND — likely doesn't exist** | case params load from the per-effect ROM table `0xA40D+` (loader `0x6225-0x627F`); the persistence commit copies case state into the `0x0Dxx` save-image area; no host packet writes `0x0F99..0x0F9F` directly | Case control = effect selection + config profile instead of a direct register write. |
 | Case cycle determinism (reset + N frames) | **UNKNOWN** | Fn+Esc ~3 s factory reset, then N frames | Untested; would give deterministic case positioning. |
 
 ## Key mapping
