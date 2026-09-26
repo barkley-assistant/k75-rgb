@@ -20,6 +20,48 @@ All sends need `sudo`. Offline previews are safe without it.
 This guarantees a known start state for the effect walk (batch 3's walk
 started from a mid-cycle position, which made the stop numbering ambiguous).
 
+## Test A — RESULT (2026-09-26): PASS
+
+Fn+Esc reset → keys rainbow wave + case rainbow wave. Known start state
+confirmed.
+
+## Test B — RESULT (2026-09-26, clean run): case cycle pinned; keys never left rainbow
+
+Ran after Test A (clean state). One `matrix baseline --send` (keys flashed
+red ~2 s), then Fn+Tab once per stop:
+
+| stop | case | keys |
+|---|---|---|
+| 1 | no visible change (strobe, caught between flashes) | rainbow wave |
+| 2 | red | rainbow wave |
+| 3 | green | rainbow wave |
+| 4 | blue | rainbow wave |
+| 5 | yellow | rainbow wave |
+| 6 | purple | rainbow wave |
+| 7 | cyan | rainbow wave |
+| 8 | white / ice-blue | rainbow wave |
+| 9 | pulse (breathing colours) | rainbow wave |
+| 10 | off | rainbow wave |
+| 11 | rainbow wave (wrap) | rainbow wave |
+
+**Findings:**
+
+1. The case cycle is an **11-stop ring**, now pinned from two independent
+   walks (batch 3 + this one), identical order:
+   `cyan → white → pulse → off → rainbow → strobe → red → green → blue →
+   yellow → purple → (wrap)`.
+2. **The keys never left rainbow wave** across the whole cycle. Batch 3's
+   keys-off mid-walk did not reproduce from a clean start — supports the
+   red-herring hypothesis (batch 3 started mid-cycle with keys already in
+   a bad state) and the runtime size-gate explanation
+   (`0x0377:0x0378` vs `0x08F1:0x08F2`).
+3. **The money observation did not appear**: no stop showed the staged red
+   matrix persistently, and the key-side 16-effect walk decoded from CODE
+   table `0xDB76` does not materialise on the keys via Fn+Tab. The
+   persistence gate (effect `0x13` + `0x0C4D=0x69`) is therefore NOT
+   reachable through this cycle from a clean state. Reverse-order fallback
+   deferred — the case-off stop showed no key-side change either.
+
 ## Test B — red-herring walk: keys LIT, map all 17 effect stops
 
 The batch-3 walk had keys off, so we only mapped the case side. This time
