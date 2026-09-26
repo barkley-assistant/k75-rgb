@@ -44,11 +44,15 @@ use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 
-const DEFAULT_SOCKET: &str = "/tmp/k75d.sock";
+fn default_socket() -> String {
+    std::env::var("XDG_RUNTIME_DIR")
+        .map(|d| format!("{d}/k75d.sock"))
+        .unwrap_or_else(|_| std::env::temp_dir().join("k75d.sock").display().to_string())
+}
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut args = std::env::args().skip(1);
-    let mut socket = DEFAULT_SOCKET.to_string();
+    let mut socket = default_socket();
     let mut allow_writes = false;
     while let Some(a) = args.next() {
         match a.as_str() {

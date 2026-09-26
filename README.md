@@ -75,9 +75,9 @@ socket — the API surface the GUI and scripts talk to:
 
 ```sh
 cargo build --release --bin k75d
-sudo ./target/release/k75d --allow-writes &   # socket: /tmp/k75d.sock
+sudo ./target/release/k75d --allow-writes &   # socket: $XDG_RUNTIME_DIR/k75d.sock
 printf '{"op":"map"}\n{"op":"save","send":false,"color":"ff0000"}\n' \
-  | socat - UNIX-CONNECT:/tmp/k75d.sock
+  | socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/k75d.sock
 ```
 
 Read-only by default; writes need `--allow-writes`; `effect` is refused until

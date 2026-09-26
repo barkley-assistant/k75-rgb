@@ -44,11 +44,13 @@ k75 map
 ## `k75d` — daemon
 
 ```text
-k75d [--socket /tmp/k75d.sock] [--allow-writes]
+k75d [--socket $XDG_RUNTIME_DIR/k75d.sock] [--allow-writes]
 ```
 
 JSON-lines over a unix socket; one response per request. The socket is
 chmod'd `0666` so a root daemon serves non-root clients (GUI, scripts).
+Default path: `$XDG_RUNTIME_DIR/k75d.sock` (falls back to the system temp
+dir).
 
 | op | params | notes |
 |----|--------|-------|
