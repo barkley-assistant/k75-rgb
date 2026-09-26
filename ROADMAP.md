@@ -22,7 +22,7 @@ Critical path: **Test B** (persistent matrix + effect appearance map) →
 | # | Feature | Status | Progress |
 |---|---|---|---|
 | 1.1 | Uniform colour write (cmd `0x0a`/`0x0b`) | ✅ | 100% |
-| 1.2 | Per-key pattern write | ✅ (mech.) | 80% — uniform only visually confirmed |
+| 1.2 | Per-key pattern write | ✅ (mech.) | 85% — layout pinned + `from_slots` implemented; visual confirm pending |
 | 1.3 | Direct matrix display (cmd `0x08`, 126 slots) | ✅ | 100% |
 | 1.4 | Key map (slots ↔ physical keys) | ✅ (14 pins) | 90% — rest by table reference |
 | 1.5 | Flash save (cmd `0x06`) | ✅ | 100% — re-verification queued |

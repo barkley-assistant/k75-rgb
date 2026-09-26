@@ -13,7 +13,7 @@ Last updated 2026-09-26 (post experiment A). Statuses:
 | Feature | Status | Path | Notes |
 |---|---|---|---|
 | Set all keys to one colour | **VERIFIED** | report `0x09`: cmd `0x0a` per-key RGB write + cmd `0x0b` apply | User-observed solid red (2026-09-24). |
-| Per-key colour table (patterns) | **VERIFIED** (mechanically) | same `0x0a`/`0x0b` path — per-key RGB table, stride 0x12 | Any per-key pattern is expressible; only uniform red visually confirmed so far. |
+| Per-key colour table (patterns) | **IMPLEMENTED** (lib) + uniform visually verified | `0x0a`/`0x0b` path; slot geometry pinned from `fcn.00007108` (stride `0x12` = 6 RGB triples/row, slot `i` at payload `2+i*3`) | `PerKeyColorFrame::from_slots([Rgb;126])` builds arbitrary patterns; only uniform red visually confirmed so far. |
 | Direct matrix display (126 slots) | **VERIFIED** | report `0x09` cmd `0x08`, 520-byte frame, offsets 8..385 | Transient ~2 s; `--repeat` keeps it lit. 15 key slots + 2 gaps + 2 non-key slots verified. |
 | Flash SAVE (persist) | **VERIFIED** | cmd `0x06` → `fcn.00007393` (op 0x56, ~380 B commit, 0xAA magic) | Red survived unplug/replug **and 2.4 GHz wireless mode** (2026-09-24, user-observed). Re-verification with current tooling pending (legacy probes were error-prone). |
 | Persistent custom matrix (effect 0x13 path) | **TRACED** | stage matrix `0x08` + select effect `0x0F83=0x13` → arms `0x0C4D=0x69` → continuous render | First live attempt: keys went OFF at terminal stop, case went breathing. Red-herring re-test queued (test B). |
