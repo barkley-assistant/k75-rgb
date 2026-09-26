@@ -27,6 +27,7 @@ Reverse-engineering the proprietary RGB protocol of the RedThunder K75
 | [`firmware/architecture.md`](firmware/architecture.md) | Effect engine, registers, data-flash, per-key matrix — instruction-level decode with addresses. |
 | [`firmware/rendering-architecture.md`](firmware/rendering-architecture.md) | Transient-vs-persistent rendering, the `0x0F59` countdown, `0x0F83=0x13` persistence path, register-block ingress. |
 | [`firmware/case-frame-stepping.md`](firmware/case-frame-stepping.md) | Case light: frame-synced animation stepping (1 frame = 1 step). |
+| [`firmware/effect-table.md`](firmware/effect-table.md) | Decoded effect-code → renderer map, Fn+Tab cycle order, palettes, predictions. |
 
 ## Mapping & reference
 
@@ -54,7 +55,8 @@ Source: USB string descriptors in `../fw/` dumps and the vendor tool's
 | Doc | What's in it |
 |---|---|
 | [`plans/PLAN.md`](plans/PLAN.md) | Remaining work, concrete steps with acceptance criteria. |
-| [`plans/test-plan-3.md`](plans/test-plan-3.md) | Current live-test batch (key map, effects, persistence, case light). |
+| [`plans/test-plan-4.md`](plans/test-plan-4.md) | Next live-test batch (lit-key effect map, persistence re-test, save re-verify, case determinism). |
+| [`plans/test-plan-3.md`](plans/test-plan-3.md) | Completed batch (key map, case walk, cadence experiment) — results recorded. |
 | [`plans/test-plan-2.md`](plans/test-plan-2.md) | Retired earlier batch; kept for history. |
 
 ## Raw artifacts

@@ -65,11 +65,11 @@ Critical path: **Test B** (persistent matrix + effect appearance map) →
 
 ## Next up
 
-1. **Test B** — red-herring walk: stage red keys, Fn+Tab through all 17
-   stops, confirm effect `0x13` renders the staged matrix continuously and
-   record every effect's appearance (1.7 + 1.9).
-2. **Save re-verification** — port `0x0a`/`0x0b`/`0x06` into the trusted
-   library + CLI, re-run replug + 2.4 GHz check (1.5/1.6).
+1. **Test B (plan 4)** — red-herring walk: stage red keys, Fn+Tab through
+   all 17 stops, confirm effect `0x13` renders the staged matrix
+   continuously and record every effect's appearance (1.7 + 1.9).
+2. **Save re-verification (plan 4, test C)** — the sequence is now ported
+   (`k75 save <colour> --send`); run the replug + 2.4 GHz check live.
 3. **Case determinism** — Fn+Esc + N frames → predictable case stage (2.4).
 4. **Host effect selection** — pin carrier for `0x5A 0xAC` block (1.8).
 5. **Polish** — brightness/speed host writes, 2.4 GHz matrix probe, GUI.

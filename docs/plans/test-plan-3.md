@@ -1,10 +1,30 @@
-# Test Plan 3 — key-map completion and persistence (next live batch)
+# Test Plan 3 — key-map completion and persistence (COMPLETE — results below)
 
-Prepared for the next live session. Everything here uses either the
-**verified** `0x08` matrix frame or the keyboard's **own** Fn combos — no
-unverified packets. Recovery: **Fn+Esc hold ~3 s** at any point.
+This batch ran 2026-09-26. Results are recorded here; the remaining open
+items moved to [test-plan-4.md](test-plan-4.md).
 
-Prereqs:
+## Results summary
+
+- **Test 1 (key map): 14/14 key predictions matched live.** Verified pins:
+  slot 0 Esc, 7 `1`, 10 `\|`, 14 W, 27 F, 30 F4, 34 V, 35 Space, 51 K, 55 `9`,
+  56 O, 63 `;`, 84 Delete, 95 Right. Slot 90 (vendor "Mute") drives no LED —
+  this board variant has no physical mute key. Slot 10 is `\|` on en-GB, not
+  the vendor's `><`. Slots 6 and 76 (gaps) confirmed dead; slots 96 and 100
+  (non-key) confirmed dead — no visible LED, no case-light effect. The
+  remaining keys are mapped by vendor-table reference.
+- **Test 2 (effect walk): case side mapped, key side deferred.** With keys
+  parked off, the case walks 11 stops: cyan, white, pulse, off, rainbow
+  wave, rainbow strobe, red, green, blue, yellow, purple. The key-side
+  appearance of the 17 effect stops was NOT captured (keys were off — the
+  "red herring"); re-run in Test B of plan 4 with keys lit.
+- **Test 3 (persistence): first attempt inconclusive — keys went OFF at the
+  terminal stop**, case went breathing. Red-herring re-test in plan 4.
+- **Experiment A (cadence): each `0x08` frame steps the case animation.**
+  See `../firmware/case-frame-stepping.md`.
+
+<details><summary>Original plan (historical)</summary>
+
+## Prereqs
 
 ```sh
 cd tools/hidra_probe && cargo build --release
@@ -118,3 +138,5 @@ the reload command is exactly what previously wedged the lights
 - Fn+Esc (hold ~3 s) restores factory state at any time.
 - Record observations verbatim: which key, how long lit, case-light state
   (rainbow? static? off?) on every test.
+
+</details>
