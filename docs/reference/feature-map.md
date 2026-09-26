@@ -36,9 +36,9 @@ Last updated 2026-09-26 (post experiment A). Statuses:
 | Feature | Status | Notes |
 |---|---|---|
 | 126-slot matrix ↔ physical keys | **VERIFIED (structure)** | 21×6 firmware chain; 16×6 physical grid (96 positions); 82 vendor LED IDs + 14 gaps; 30 non-key slots (96..125) with no visible LED. |
-| Vendor table pins | **VERIFIED (15 keys)** | Esc=0, `;`=63, F4=30, 1=7, 9=55, W=14, O=56, F=27, K=51, V=34, Space=35, Right=95, Delete=84, `\|`=10, plus slot-6/76 gap + 96/100 non-key nulls. |
+| Vendor table pins | **VERIFIED (14 keys)** | Esc=0, `;`=63, F4=30, 1=7, 9=55, W=14, O=56, F=27, K=51, V=34, Space=35, Right=95, Delete=84, `\|`=10, plus slot-6/76 gap + 96/100 non-key nulls. |
 | Legend corrections (en-GB) | **VERIFIED** | slot 10 = `\|` (vendor said `><`); slot 90 = no physical Mute key on this variant. |
-| Remaining 67 keys | **HIGH CONFIDENCE (by table)** | predicted from vendor table; 15/15 pin checks matched, rest by reference. |
+| Remaining 68 keys | **HIGH CONFIDENCE (by table)** | predicted from vendor table; 14/14 key pin checks matched (plus gap/non-key nulls), rest by reference. |
 
 ## Persistence & platform
 

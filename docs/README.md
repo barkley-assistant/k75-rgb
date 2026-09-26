@@ -74,7 +74,7 @@ Source: USB string descriptors in `../fw/` dumps and the vendor tool's
 
 1. **Colour write + flash save were observed live** (`0x0a`/`0x0b`/`0x06`)
    and persisted across replug **and 2.4 GHz wireless mode**.
-2. **Per-key matrix display verified** (`0x08`, 126 slots); 15 key slots
+2. **Per-key matrix display verified** (`0x08`, 126 slots); 14 key slots
    visually pinned, remaining keys mapped by vendor-table reference.
 3. **Case light is host-driveable**: Fn+Tab walks 11 case stops, and each
    `0x08` matrix frame steps the case animation once.

@@ -157,7 +157,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 fn run_map() -> Result<(), Box<dyn Error>> {
     println!("slot -> physical key (hypothesis: host slot = vendor LED ID)");
-    println!("verified live: 0 -> Esc, 63 -> ';'  |  everything else unverified");
+    println!(
+        "verified live (14 keys): 0 Esc, 7 1, 10 \\|, 14 W, 27 F, 30 F4, 34 V, 35 Space, 51 K, 55 9, 56 O, 63 ;, 84 Delete, 95 Right"
+    );
     println!("{}", "-".repeat(46));
     for slot in 0..MATRIX_SLOTS {
         let kind = if slot < 96 {

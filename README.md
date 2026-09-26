@@ -8,7 +8,7 @@ API + Electron GUI as the final product.
 
 - **Colour write** ✅ verified live (wired + 2.4 GHz wireless)
 - **Flash save** ✅ verified — survives power-cycle and wireless mode
-- **Per-key matrix display** ✅ verified — 126 slots, 15 keys visually pinned
+- **Per-key matrix display** ✅ verified — 126 slots, 14 keys visually pinned
 - **Case light** ✅ host-driveable — Fn+Tab walks 11 stops, each `0x08` frame steps the case animation
 - **Persistent custom matrix** 🔬 traced end-to-end, one live re-test left
 - **Host effect selection** 🔬 carrier packet unpinned

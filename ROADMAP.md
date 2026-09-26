@@ -23,7 +23,7 @@ Critical path: **Test B** (persistent matrix + effect appearance map) →
 | 1.1 | Uniform colour write (cmd `0x0a`/`0x0b`) | ✅ | 100% |
 | 1.2 | Per-key pattern write | ✅ (mech.) | 80% — uniform only visually confirmed |
 | 1.3 | Direct matrix display (cmd `0x08`, 126 slots) | ✅ | 100% |
-| 1.4 | Key map (slots ↔ physical keys) | ✅ (15 pins) | 90% — rest by table reference |
+| 1.4 | Key map (slots ↔ physical keys) | ✅ (14 pins) | 90% — rest by table reference |
 | 1.5 | Flash save (cmd `0x06`) | ✅ | 100% — re-verification queued |
 | 1.6 | Save survives replug + 2.4 GHz | ✅ | 100% |
 | 1.7 | Persistent custom matrix (effect `0x13`) | 🔬 | 70% — one live test left |
@@ -60,7 +60,7 @@ Critical path: **Test B** (persistent matrix + effect appearance map) →
 | 2026-09-24 | Colour write + flash save verified; persists across replug + 2.4 GHz |
 | 2026-09-24 | Per-key matrix display verified (slot 0 → Esc, slot 63 → `;`) |
 | 2026-09-25 | Persistence mechanism traced end-to-end (`0x0F83=0x13` + `0x0C4D=0x69`) |
-| 2026-09-26 | Key map: 15 slots visually pinned, gaps + non-key slots confirmed |
+| 2026-09-26 | Key map: 14 slots visually pinned, gaps + non-key slots confirmed |
 | 2026-09-26 | Case light: Fn+Tab walks 11 stops; **each `0x08` frame steps the case** |
 
 ## Next up
